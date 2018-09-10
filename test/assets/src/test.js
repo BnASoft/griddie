@@ -14,7 +14,8 @@
 
     document.getElementById('masonryToggler').addEventListener('click', () =>
         griddie.animate(() => {
-            document.getElementsByClassName('grid')[0].classList.toggle('masonry');
+            griddie.options = { ...griddie.options, ...{ masonry: !griddie.options.masonry } };
+            grid.classList.toggle('masonry');
         })
     );
 });

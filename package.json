@@ -1,5 +1,5 @@
 {
-    "name": "nitejs",
+    "name": "griddie",
     "version": "1.0.0",
     "description": "",
     "main": "gulpfile.js",
@@ -33,7 +33,7 @@
         "gulp-sourcemaps": "^2.6.4",
         "gulp-util": "^3.0.8",
         "gulp-watch": "^5.0.0",
-        "npm": "^6.0.0",
+        "npm": "^6.4.1",
         "postcss-cli": "^5.0.0",
         "pump": "^3.0.0"
     }

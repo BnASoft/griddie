@@ -21,6 +21,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
     var Griddie = function () {
         function Griddie(options) {
+            var _this = this;
+
             _classCallCheck(this, Griddie);
 
             this._options = {};
@@ -30,51 +32,53 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
             this.options = options;
             this.layout();
-            window.addEventListener('resize', this.layout);
+            window.addEventListener('resize', function () {
+                return _this.layout();
+            });
         }
 
         _createClass(Griddie, [{
             key: 'animate',
             value: function animate() {
-                var _this = this;
+                var _this2 = this;
 
                 var layoutChanges = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : function () {};
 
                 var animation = new Promise(function (resolve, reject) {
                     var callback = function callback() {
-                        _this.clear();
-                        _this.layout(0);
-                        _this.store(1);
-                        _this.transform(0);
+                        _this2.clear();
+                        _this2.layout(0);
+                        _this2.store(1);
+                        _this2.transform(0);
 
                         requestAnimationFrame(function () {
-                            _this._options.element.style.transition = 'height ' + _this._options.transformTimingCSS + 's ease';
-                            [].concat(_toConsumableArray(_this._options.items)).filter(function (item) {
+                            _this2._options.element.style.transition = 'height ' + _this2._options.transformTimingCSS + 's ease';
+                            [].concat(_toConsumableArray(_this2._options.items)).filter(function (item) {
                                 return item.style.display !== 'none';
                             }).forEach(function (item) {
-                                var transition = 'transform ' + _this._options.transformTimingCSS + 's ease';
-                                if (_this.options.animateWidthAndHeight) {
-                                    transition += ', width ' + _this._options.transformTimingCSS + 's ease, height ' + _this._options.transformTimingCSS + 's ease';
+                                var transition = 'transform ' + _this2._options.transformTimingCSS + 's ease';
+                                if (_this2.options.animateWidthAndHeight) {
+                                    transition += ', width ' + _this2._options.transformTimingCSS + 's ease, height ' + _this2._options.transformTimingCSS + 's ease';
                                 }
 
                                 item.style.transition = transition;
                             });
 
                             requestAnimationFrame(function () {
-                                return _this.transform(1);
+                                return _this2.transform(1);
                             });
 
-                            clearTimeout(_this._animationTimeout);
-                            _this._animationTimeout = setTimeout(function () {
-                                _this.clear();
+                            clearTimeout(_this2._animationTimeout);
+                            _this2._animationTimeout = setTimeout(function () {
+                                _this2.clear();
                                 resolve();
-                            }, _this.options.transformTiming);
+                            }, _this2.options.transformTiming);
                         });
                     };
 
-                    _this.clear();
-                    _this.store(0);
-                    _this.transform(0);
+                    _this2.clear();
+                    _this2.store(0);
+                    _this2.transform(0);
 
                     var changes = layoutChanges();
 
@@ -92,7 +96,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         }, {
             key: 'filter',
             value: function filter() {
-                var _this2 = this;
+                var _this3 = this;
 
                 var _filter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '*';
 
@@ -107,8 +111,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                 });
                 var makeRoomBeforeFade = matched.length !== hiddenMatched.length;
                 var prepareFade = function prepareFade() {
-                    _this2._options.items.forEach(function (item) {
-                        item.style.transition = 'opacity ' + _this2._options.opacityTimingCSS + 's ease';
+                    _this3._options.items.forEach(function (item) {
+                        item.style.transition = 'opacity ' + _this3._options.opacityTimingCSS + 's ease';
                     });
                 };
                 var fade = function fade() {
@@ -121,7 +125,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                     });
                 };
                 var clearFade = function clearFade() {
-                    _this2._options.items.forEach(function (item) {
+                    _this3._options.items.forEach(function (item) {
                         item.style.transition = '';
                         item.style.opacity = '';
                     });
@@ -138,8 +142,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                 var animation = this.animate(function () {
                     var fadeAfterAnimation = new Promise(function (resolve, reject) {
                         var onFadeEnd = function onFadeEnd() {
-                            _this2.store(0);
-                            _this2.transform(0);
+                            _this3.store(0);
+                            _this3.transform(0);
                             resolve();
                         };
 
@@ -166,15 +170,15 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                                 requestAnimationFrame(function () {
                                     fade();
 
-                                    clearTimeout(_this2._filterTimeout);
+                                    clearTimeout(_this3._filterTimeout);
 
-                                    _this2._filterTimeout = setTimeout(function () {
+                                    _this3._filterTimeout = setTimeout(function () {
                                         clearFade();
 
                                         requestAnimationFrame(function () {
                                             return onFadeEnd();
                                         });
-                                    }, _this2.options.opacityTiming);
+                                    }, _this3.options.opacityTiming);
                                 });
                             }
                         });
@@ -190,11 +194,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                         requestAnimationFrame(function () {
                             fade();
 
-                            clearTimeout(_this2._filterTimeout);
+                            clearTimeout(_this3._filterTimeout);
 
-                            _this2._filterTimeout = setTimeout(function () {
+                            _this3._filterTimeout = setTimeout(function () {
                                 return clearFade();
-                            }, _this2.options.opacityTiming);
+                            }, _this3.options.opacityTiming);
                         });
                     }
                 });
@@ -215,7 +219,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         }, {
             key: 'layout',
             value: function layout() {
-                if (this.options.masonry) {
+                if (this._options.masonry) {
                     var rowHeight = parseInt(window.getComputedStyle(this._options.element).getPropertyValue('grid-auto-rows'));
                     var rowGap = parseInt(window.getComputedStyle(this._options.element).getPropertyValue('grid-row-gap'));
 
@@ -254,7 +258,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         }, {
             key: 'store',
             value: function store() {
-                var _this3 = this;
+                var _this4 = this;
 
                 var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
@@ -282,8 +286,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                     item.rect[id] = {
                         width: itemRect.width,
                         height: itemRect.height,
-                        top: itemRect.top + scroll.top - _this3._options.element.rect[id].top,
-                        left: itemRect.left + scroll.left - _this3._options.element.rect[id].left,
+                        top: itemRect.top + scroll.top - _this4._options.element.rect[id].top,
+                        left: itemRect.left + scroll.left - _this4._options.element.rect[id].left,
                         scaleX: 1,
                         scaleY: 1
                     };
@@ -307,7 +311,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         }, {
             key: 'transform',
             value: function transform() {
-                var _this4 = this;
+                var _this5 = this;
 
                 var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
@@ -320,11 +324,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                 }).forEach(function (item) {
                     var transform = 'translate3d(' + item.rect[id].left + 'px,' + item.rect[id].top + 'px, 0px)';
 
-                    if (!_this4.options.animateWidthAndHeight) {
+                    if (!_this5.options.animateWidthAndHeight) {
                         transform += ' scale3d(' + item.rect[id].scaleX + ', ' + item.rect[id].scaleY + ', 1)';
                     }
 
-                    if (_this4.options.animateWidthAndHeight || id === 0) {
+                    if (_this5.options.animateWidthAndHeight || id === 0) {
                         item.style.width = item.rect[id].width + 'px';
                         item.style.height = item.rect[id].height + 'px';
                     }

@@ -9,7 +9,7 @@ export default class Griddie {
 
         this.options = options;
         this.layout();
-        window.addEventListener('resize', this.layout);
+        window.addEventListener('resize', () => this.layout());
     }
 
     set options(options) {
@@ -179,7 +179,7 @@ export default class Griddie {
 
     // TODO: private
     layout() {
-        if (this.options.masonry) {
+        if (this._options.masonry) {
             const rowHeight = parseInt(window.getComputedStyle(this._options.element).getPropertyValue('grid-auto-rows'));
             const rowGap = parseInt(window.getComputedStyle(this._options.element).getPropertyValue('grid-row-gap'));
 
