@@ -25,6 +25,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
     document.getElementById('masonryToggler').addEventListener('click', function () {
         return griddie.animate(function () {
             griddie.options = _extends({}, griddie.options, { masonry: !griddie.options.masonry });
+            grid.classList.toggle('masonry');
         });
     });
 });

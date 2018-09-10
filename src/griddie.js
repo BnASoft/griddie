@@ -1,11 +1,9 @@
-import { isPromise } from './griddie.utils.js';
+import { isPromise } from './griddie.utils';
+import { attachTimeout, detachTimeout } from './libs/toolbox/src/toolbox.timers';
 
 export default class Griddie {
     constructor(options) {
         this._options = {};
-
-        this._animationTimeout = null; // TODO: replace with toolbox.timer ...
-        this._filterTimeout = null; // TODO: replace with toolbox.timer ...
 
         this.options = options;
         this.layout();
@@ -52,11 +50,15 @@ export default class Griddie {
 
                     requestAnimationFrame(() => this.transform(1));
 
-                    clearTimeout(this._animationTimeout);
-                    this._animationTimeout = setTimeout(() => {
-                        this.clear();
-                        resolve();
-                    }, this.options.transformTiming);
+                    attachTimeout(
+                        this._options.element,
+                        () => {
+                            this.clear();
+                            resolve();
+                        },
+                        this.options.transformTiming,
+                        'transform'
+                    );
                 });
             };
 
@@ -139,13 +141,16 @@ export default class Griddie {
                         requestAnimationFrame(() => {
                             fade();
 
-                            clearTimeout(this._filterTimeout);
+                            attachTimeout(
+                                this._options.element,
+                                () => {
+                                    clearFade();
 
-                            this._filterTimeout = setTimeout(() => {
-                                clearFade();
-
-                                requestAnimationFrame(() => onFadeEnd());
-                            }, this.options.opacityTiming);
+                                    requestAnimationFrame(() => onFadeEnd());
+                                },
+                                this.options.opacityTiming,
+                                'opacity'
+                            );
                         });
                     }
                 });

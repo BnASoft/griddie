@@ -6,9 +6,9 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 (function (global, factory) {
     (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory() : typeof define === 'function' && define.amd ? define('Griddie', factory) : global.Griddie = factory();
@@ -19,6 +19,88 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         return !!object && ((typeof object === 'undefined' ? 'undefined' : _typeof(object)) === 'object' || typeof object === 'function') && typeof object.then === 'function';
     };
 
+    var userAgent = navigator.userAgent.toLowerCase();
+
+    var vendorsPrefixes = ['WebKit', 'Moz', 'O', 'Ms', ''];
+
+    var MutationObserver = function () {
+        for (var i = 0; i < vendorsPrefixes.length; i++) {
+            if (vendorsPrefixes[i] + 'MutationObserver' in window) {
+                return window[vendorsPrefixes[i] + 'MutationObserver'];
+            }
+        }
+
+        return false;
+    }();
+
+    var transitionEndEventName = function () {
+        var el = document.createElement('div');
+
+        var transEndEventNames = {
+            WebkitTransition: 'webkitTransitionEnd',
+            MozTransition: 'transitionend',
+            OTransition: 'oTransitionEnd otransitionend',
+            msTransition: 'MSTransitionEnd',
+            transition: 'transitionend'
+        };
+
+        for (var name in transEndEventNames) {
+            if (el.style[name] !== undefined) {
+                return transEndEventNames[name];
+            }
+        }
+
+        return false;
+    }();
+
+    var getObserverId = function getObserverId(parent, prefix) {
+        return prefix + [].concat(_toConsumableArray(parent.classList)).join('') + parent.id + 'Observer';
+    };
+
+    var disconnectObserver = function disconnectObserver(parent, mode, id) {
+        var observerId = getObserverId(parent, id + mode);
+        if (parent[observerId]) {
+            parent[observerId].disconnect();
+            delete parent[observerId];
+        }
+    };
+
+    var setElementTimer = function setElementTimer(element, mode, callback, time, id) {
+        clearElementTimer(element, mode, id);
+        element[id] = window['set' + mode](callback, time);
+
+        var parent = element.parentElement;
+        var observerId = getObserverId(parent, id + mode);
+        parent[observerId] = new MutationObserver(function (e) {
+            if ([].concat(_toConsumableArray(e[0].removedNodes)).some(function (el) {
+                return el === element;
+            })) {
+                clearElementTimer(element, mode, id);
+                disconnectObserver(parent, mode, id);
+            }
+        });
+        parent[observerId].observe(parent, { childList: true });
+    };
+
+    var clearElementTimer = function clearElementTimer(element, mode, id) {
+        var autoDisconnectObserver = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+
+        window['clear' + mode](element[id]);
+        delete element[id];
+
+        var parent = element.parentElement;
+        if (autoDisconnectObserver) {
+            disconnectObserver(parent, mode, id);
+        }
+    };
+
+    var attachTimeout = function attachTimeout(element) {
+        var callback = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function () {};
+        var time = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+        var id = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 'niteTimeout';
+        return setElementTimer(element, 'Timeout', callback, time, id);
+    };
+
     var Griddie = function () {
         function Griddie(options) {
             var _this = this;
@@ -26,9 +108,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             _classCallCheck(this, Griddie);
 
             this._options = {};
-
-            this._animationTimeout = null; // TODO: replace with toolbox.timer ...
-            this._filterTimeout = null; // TODO: replace with toolbox.timer ...
 
             this.options = options;
             this.layout();
@@ -68,11 +147,10 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                                 return _this2.transform(1);
                             });
 
-                            clearTimeout(_this2._animationTimeout);
-                            _this2._animationTimeout = setTimeout(function () {
+                            attachTimeout(_this2._options.element, function () {
                                 _this2.clear();
                                 resolve();
-                            }, _this2.options.transformTiming);
+                            }, _this2.options.transformTiming, 'transform');
                         });
                     };
 
@@ -170,15 +248,13 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                                 requestAnimationFrame(function () {
                                     fade();
 
-                                    clearTimeout(_this3._filterTimeout);
-
-                                    _this3._filterTimeout = setTimeout(function () {
+                                    attachTimeout(_this3._options.element, function () {
                                         clearFade();
 
                                         requestAnimationFrame(function () {
                                             return onFadeEnd();
                                         });
-                                    }, _this3.options.opacityTiming);
+                                    }, _this3.options.opacityTiming, 'opacity');
                                 });
                             }
                         });
