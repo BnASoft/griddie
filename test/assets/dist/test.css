@@ -1,0 +1,78 @@
+.grid.masonry {
+  display: grid;
+  grid-gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-auto-rows: 20px;
+}
+
+.grid.collapse.masonry {
+  grid-gap: 1px;
+}
+
+.grid:not(.masonry) {
+  overflow: hidden;
+}
+
+.grid:not(.masonry) .item {
+  float: left;
+  width: calc(33.333% - 20px);
+  margin: 10px;
+}
+
+.grid:not(.masonry).collapse .item {
+  width: calc(33.333% - 2px);
+  margin: 1px;
+}
+
+/* Non-grid specific CSS */
+a {
+  color: tomato;
+  font-weight: bold;
+}
+
+body {
+  margin: 10px;
+  color: #fff;
+  background-color: #374046;
+  font-family: 'Open Sans Condensed', sans-serif;
+  font-size: 1.15em;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.item {
+  background-color: #fff;
+  color: #000;
+}
+
+.title {
+  padding: 20px;
+}
+
+.title h3 {
+  font-size: 1.2em;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.project .title {
+  background-color: #607d8b;
+}
+
+.blog .title {
+  background-color: #ff9800;
+}
+
+.photo .title {
+  background-color: #f44336;
+}
+
+.desc {
+  padding: 10px 10px 5px 10px;
+}
+
+.desc p {
+  margin-bottom: 10px;
+}
+
+/*# sourceMappingURL=test.css.map */
