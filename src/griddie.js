@@ -1,11 +1,12 @@
 import { isPromise } from './griddie.utils';
 import { attachTimeout, detachTimeout } from './toolbox/src/toolbox.timers';
+import { Viewport } from './toolbox/src/toolbox.viewport';
 
 export default class Griddie {
     constructor(options) {
         this._options = {};
-
         this.options = options;
+        this._viewport = new Viewport();
         this.layout();
         window.addEventListener('resize', () => this.layout());
     }
@@ -13,7 +14,7 @@ export default class Griddie {
     set options(options) {
         this._options = {
             ...{
-                animateWidthAndHeight: true, // TODO: single item exceptions ...
+                scaleXY: false, // TODO: single item exceptions ...
                 opacityTiming: 300,
                 transformTiming: 300,
                 masonry: false
@@ -41,7 +42,7 @@ export default class Griddie {
                     this._options.element.style.transition = 'height ' + this._options.transformTimingCSS + 's ease';
                     [...this._options.items].filter(item => item.style.display !== 'none').forEach(item => {
                         let transition = 'transform ' + this._options.transformTimingCSS + 's ease';
-                        if (this.options.animateWidthAndHeight) {
+                        if (!this.options.scaleXY) {
                             transition += ', width ' + this._options.transformTimingCSS + 's ease, height ' + this._options.transformTimingCSS + 's ease';
                         }
 
@@ -88,6 +89,7 @@ export default class Griddie {
                 item.style.transition = 'opacity ' + this._options.opacityTimingCSS + 's ease';
             });
         };
+
         const fade = () => {
             matched.forEach(item => {
                 item.style.opacity = 1;
@@ -97,6 +99,7 @@ export default class Griddie {
                 item.style.opacity = 0;
             });
         };
+
         const clearFade = () => {
             this._options.items.forEach(item => {
                 item.style.transition = '';
@@ -215,41 +218,47 @@ export default class Griddie {
 
     // TODO: private
     store(id = 0) {
-        const scroll = {
-            top: document.body.scrollTop,
-            left: document.body.scrollLeft
-        };
+        this._viewport.calcScrollTop();
+        this._viewport.calcScrollLeft();
+
         const gridRect = this._options.element.getBoundingClientRect();
         if (!('rect' in this._options.element)) {
             this._options.element.rect = [];
         }
+
         this._options.element.rect[id] = {
             width: gridRect.width,
             height: gridRect.height,
-            top: gridRect.top + scroll.top,
-            left: gridRect.left + scroll.left
+            top: gridRect.top + this._viewport.scrollTop,
+            left: gridRect.left + this._viewport.scrollLeft
         };
+
         this._options.items.filter(item => item.style.display !== 'none').forEach(item => {
             if (!('rect' in item)) {
                 item.rect = [];
             }
+
             const itemRect = item.getBoundingClientRect();
             item.rect[id] = {
                 width: itemRect.width,
                 height: itemRect.height,
-                top: itemRect.top + scroll.top - this._options.element.rect[id].top,
-                left: itemRect.left + scroll.left - this._options.element.rect[id].left,
+                top: itemRect.top + this._viewport.scrollTop - this._options.element.rect[id].top,
+                left: itemRect.left + this._viewport.scrollLeft - this._options.element.rect[id].left,
                 scaleX: 1,
                 scaleY: 1
             };
+
             item.rect[id].top = item.rect[id].top >= 0 ? item.rect[id].top : 0;
             item.rect[id].left = item.rect[id].left >= 0 ? item.rect[id].left : 0;
+
             if (id === 1) {
                 const scaleX = item.rect[0].width / itemRect.width;
                 const scaleY = item.rect[0].height / itemRect.height;
+
                 if (scaleX > 0) {
                     item.rect[id].scaleX = 1 / scaleX;
                 }
+
                 if (scaleY > 0) {
                     item.rect[id].scaleY = 1 / scaleY;
                 }
@@ -266,11 +275,11 @@ export default class Griddie {
         this._options.items.filter(item => item.style.display !== 'none').forEach(item => {
             let transform = 'translate3d(' + item.rect[id].left + 'px,' + item.rect[id].top + 'px, 0px)';
 
-            if (!this.options.animateWidthAndHeight) {
+            if (this.options.scaleXY) {
                 transform += ' scale3d(' + item.rect[id].scaleX + ', ' + item.rect[id].scaleY + ', 1)';
             }
 
-            if (this.options.animateWidthAndHeight || id === 0) {
+            if (!this.options.scaleXY || id === 0) {
                 item.style.width = item.rect[id].width + 'px';
                 item.style.height = item.rect[id].height + 'px';
             }

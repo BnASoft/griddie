@@ -101,6 +101,188 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
         return setElementTimer(element, 'Timeout', callback, time, id);
     };
 
+    /**
+     * @param {string} prop
+     * @param {string} value
+     * @returns {boolean}
+     */
+
+    /**
+     *
+     */
+
+    var Viewport = function () {
+        function Viewport() {
+            _classCallCheck(this, Viewport);
+
+            this._window = window;
+            this._html = document.documentElement;
+            this._body = document.body;
+
+            this._frame1 = this._window;
+            this._frame2 = this._html || this._body;
+            this._prefix1 = 'inner';
+            this._prefix2 = 'offset';
+            if (!this._prefix1 + 'Width' in this._frame1) {
+                this._prefix1 = 'client';
+                this._frame1 = this._frame2;
+            }
+
+            this._offsetWidth = 0;
+            this._offsetHeight = 0;
+            this._width = 0;
+            this._height = 0;
+            this._scrollTop = 0;
+            this._scrollLeft = 0;
+
+            this._lock = false;
+
+            this.calcAll();
+        }
+
+        _createClass(Viewport, [{
+            key: 'calcOffsetWidth',
+            value: function calcOffsetWidth() {
+                this._offsetWidth = this._body[this._prefix2 + 'Width'];
+                return this.offsetWidth;
+            }
+        }, {
+            key: 'calcOffsetHeight',
+            value: function calcOffsetHeight() {
+                this._offsetHeight = this._body[this._prefix2 + 'Height'];
+                return this.offsetHeight;
+            }
+        }, {
+            key: 'calcWidth',
+            value: function calcWidth() {
+                this._width = this._frame1[this._prefix1 + 'Width'];
+                return this.width;
+            }
+        }, {
+            key: 'calcHeight',
+            value: function calcHeight() {
+                this._height = this._frame1[this._prefix1 + 'Height'];
+                return this.height;
+            }
+        }, {
+            key: 'calcScrollTop',
+            value: function calcScrollTop() {
+                this._scrollTop = this._frame2.scrollTop || 0;
+                return this.scrollTop;
+            }
+        }, {
+            key: 'calcScrollLeft',
+            value: function calcScrollLeft() {
+                this._scrollLeft = this._frame2.scrollLeft || 0;
+                return this.scrollLeft;
+            }
+        }, {
+            key: 'calcAll',
+            value: function calcAll() {
+                this.calcOffsetWidth();
+                this.calcOffsetHeight();
+                this.calcWidth();
+                this.calcHeight();
+                this.calcScrollTop();
+                this.calcScrollLeft();
+                return this.all;
+            }
+        }, {
+            key: 'offsetWidth',
+            get: function get() {
+                return this._offsetWidth;
+            }
+        }, {
+            key: 'offsetHeight',
+            get: function get() {
+                return this._offsetHeight;
+            }
+        }, {
+            key: 'width',
+            get: function get() {
+                return this._width;
+            }
+        }, {
+            key: 'height',
+            get: function get() {
+                return this._height;
+            }
+        }, {
+            key: 'scrollTop',
+            get: function get() {
+                return this._scrollTop;
+            }
+        }, {
+            key: 'scrollLeft',
+            get: function get() {
+                return this._scrollLeft;
+            }
+        }, {
+            key: 'all',
+            get: function get() {
+                return {
+                    offsetWidth: this.offsetWidth,
+                    offsetHeight: this.offsetHeight,
+                    width: this.width,
+                    height: this.height,
+                    scrollTop: this.scrollTop,
+                    scrollLeft: this.scrollLeft
+                };
+            }
+        }, {
+            key: 'lock',
+            get: function get() {
+                return this._lock;
+            },
+            set: function set(bool) {
+                this._lock = bool;
+
+                if (this._lock) {
+                    this._body.style.top = -this.calcScrollTop() + 'px';
+                    this._body.style.left = -this.calcScrollLeft() + 'px';
+
+                    var scrollBarWidth = this.calcOffsetWidth();
+                    var scrollBarHeight = this.calcOffsetHeight();
+
+                    this._html.style.top = '0px';
+                    this._html.style.left = '0px';
+                    this._html.style.position = 'fixed';
+                    this._body.style.position = 'fixed';
+                    this._html.style.width = '100%';
+                    this._body.style.width = '100%';
+
+                    var offsetWidth = this.calcOffsetWidth();
+                    var offsetHeight = this.calcOffsetHeight();
+                    scrollBarWidth = offsetWidth - scrollBarWidth;
+                    scrollBarHeight = offsetHeight - scrollBarHeight;
+
+                    this._body.style.width = offsetWidth - scrollBarWidth + 'px';
+                    this._body.style.height = offsetHeight - scrollBarHeight + 'px';
+                } else {
+                    var scrollTop = Math.abs(parseFloat(this._body.style.top));
+                    var scrollLeft = Math.abs(parseFloat(this._body.style.left));
+
+                    this._html.style.position = '';
+                    this._html.style.top = '';
+                    this._html.style.left = '';
+                    this._html.style.width = '';
+                    this._body.style.position = '';
+                    this._body.style.top = '';
+                    this._body.style.left = '';
+                    this._body.style.width = '';
+
+                    this._window.scroll({
+                        top: scrollTop,
+                        left: scrollLeft,
+                        behavior: 'instant'
+                    });
+                }
+            }
+        }]);
+
+        return Viewport;
+    }();
+
     var Griddie = function () {
         function Griddie(options) {
             var _this = this;
@@ -108,8 +290,8 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
             _classCallCheck(this, Griddie);
 
             this._options = {};
-
             this.options = options;
+            this._viewport = new Viewport();
             this.layout();
             window.addEventListener('resize', function () {
                 return _this.layout();
@@ -136,7 +318,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                                 return item.style.display !== 'none';
                             }).forEach(function (item) {
                                 var transition = 'transform ' + _this2._options.transformTimingCSS + 's ease';
-                                if (_this2.options.animateWidthAndHeight) {
+                                if (!_this2.options.scaleXY) {
                                     transition += ', width ' + _this2._options.transformTimingCSS + 's ease, height ' + _this2._options.transformTimingCSS + 's ease';
                                 }
 
@@ -193,6 +375,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                         item.style.transition = 'opacity ' + _this3._options.opacityTimingCSS + 's ease';
                     });
                 };
+
                 var fade = function fade() {
                     matched.forEach(function (item) {
                         item.style.opacity = 1;
@@ -202,6 +385,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                         item.style.opacity = 0;
                     });
                 };
+
                 var clearFade = function clearFade() {
                     _this3._options.items.forEach(function (item) {
                         item.style.transition = '';
@@ -338,43 +522,49 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
                 var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
-                var scroll = {
-                    top: document.body.scrollTop,
-                    left: document.body.scrollLeft
-                };
+                this._viewport.calcScrollTop();
+                this._viewport.calcScrollLeft();
+
                 var gridRect = this._options.element.getBoundingClientRect();
                 if (!('rect' in this._options.element)) {
                     this._options.element.rect = [];
                 }
+
                 this._options.element.rect[id] = {
                     width: gridRect.width,
                     height: gridRect.height,
-                    top: gridRect.top + scroll.top,
-                    left: gridRect.left + scroll.left
+                    top: gridRect.top + this._viewport.scrollTop,
+                    left: gridRect.left + this._viewport.scrollLeft
                 };
+
                 this._options.items.filter(function (item) {
                     return item.style.display !== 'none';
                 }).forEach(function (item) {
                     if (!('rect' in item)) {
                         item.rect = [];
                     }
+
                     var itemRect = item.getBoundingClientRect();
                     item.rect[id] = {
                         width: itemRect.width,
                         height: itemRect.height,
-                        top: itemRect.top + scroll.top - _this4._options.element.rect[id].top,
-                        left: itemRect.left + scroll.left - _this4._options.element.rect[id].left,
+                        top: itemRect.top + _this4._viewport.scrollTop - _this4._options.element.rect[id].top,
+                        left: itemRect.left + _this4._viewport.scrollLeft - _this4._options.element.rect[id].left,
                         scaleX: 1,
                         scaleY: 1
                     };
+
                     item.rect[id].top = item.rect[id].top >= 0 ? item.rect[id].top : 0;
                     item.rect[id].left = item.rect[id].left >= 0 ? item.rect[id].left : 0;
+
                     if (id === 1) {
                         var scaleX = item.rect[0].width / itemRect.width;
                         var scaleY = item.rect[0].height / itemRect.height;
+
                         if (scaleX > 0) {
                             item.rect[id].scaleX = 1 / scaleX;
                         }
+
                         if (scaleY > 0) {
                             item.rect[id].scaleY = 1 / scaleY;
                         }
@@ -400,11 +590,11 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                 }).forEach(function (item) {
                     var transform = 'translate3d(' + item.rect[id].left + 'px,' + item.rect[id].top + 'px, 0px)';
 
-                    if (!_this5.options.animateWidthAndHeight) {
+                    if (_this5.options.scaleXY) {
                         transform += ' scale3d(' + item.rect[id].scaleX + ', ' + item.rect[id].scaleY + ', 1)';
                     }
 
-                    if (_this5.options.animateWidthAndHeight || id === 0) {
+                    if (!_this5.options.scaleXY || id === 0) {
                         item.style.width = item.rect[id].width + 'px';
                         item.style.height = item.rect[id].height + 'px';
                     }
@@ -419,7 +609,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
             key: 'options',
             set: function set(options) {
                 this._options = _extends({
-                    animateWidthAndHeight: true, // TODO: single item exceptions ...
+                    scaleXY: false, // TODO: single item exceptions ...
                     opacityTiming: 300,
                     transformTiming: 300,
                     masonry: false
