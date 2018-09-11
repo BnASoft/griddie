@@ -1,5 +1,5 @@
 import { isPromise } from './griddie.utils';
-import { attachTimeout, detachTimeout } from './libs/toolbox/src/toolbox.timers';
+import { attachTimeout, detachTimeout } from './toolbox/src/toolbox.timers';
 
 export default class Griddie {
     constructor(options) {
