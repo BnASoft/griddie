@@ -100,12 +100,34 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
         var id = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 'niteTimeout';
         return setElementTimer(element, 'Timeout', callback, time, id);
     };
+    var detachTimeout = function detachTimeout(element) {
+        var id = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'niteTimeout';
+        return clearElementTimer(element, 'Timeout', id, true);
+    };
 
     /**
      * @param {string} prop
      * @param {string} value
      * @returns {boolean}
      */
+
+    /**
+     * @param {string} heystack
+     * @param {string} needle
+     * @returns {boolean}
+     */
+    var stringContains = function stringContains(heystack, needle) {
+        return String.prototype.includes ? heystack.includes(needle) : heystack.indexOf(needle, 0) !== -1;
+    };
+
+    /**
+     * @param {string} heystack
+     * @param {string} needle
+     * @returns {boolean}
+     */
+    var stringStartsWith = function stringStartsWith(heystack, needle) {
+        return String.prototype.startsWith ? heystack.startsWith(needle) : heystack.substr(0, needle.length) === needle;
+    };
 
     /**
      *
@@ -283,17 +305,115 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
         return Viewport;
     }();
 
+    var eventNamespaceParserSeparator = '__namespace__';
+    var privateEventsStorage = {};
+
+    var CustomEvent = window.CustomEvent || function () {
+        var _polyfill = function _polyfill(event, params) {
+            params = params || { bubbles: false, cancelable: false, detail: undefined };
+            var evt = document.createEvent('CustomEvent');
+            evt.initCustomEvent(event, params.bubbles, params.cancelable, params.detail);
+            return evt;
+        };
+        _polyfill.prototype = window.Event.prototype;
+        return _polyfill;
+    }();
+
+    /**
+     * @param {HTMLElement} element
+     * @param {string} events
+     * @returns {undefined}
+     */
+    var detachEventListener = function detachEventListener(element, events) {
+        if (!element || typeof events !== 'string') {
+            return;
+        }
+
+        if (stringStartsWith(events, '.')) {
+            for (var key in privateEventsStorage) {
+                var eventNameWithNamespace = key.replace(eventNamespaceParserSeparator, '.');
+                if (stringContains(eventNameWithNamespace, events) && privateEventsStorage[key].element === element) {
+                    detachEventListener(element, eventNameWithNamespace);
+                }
+            }
+        } else {
+            events = events.split('.');
+
+            var type = events[0],
+                namespace = events[1];
+
+            if (namespace) {
+                events = events.join(eventNamespaceParserSeparator);
+            }
+
+            if (events in privateEventsStorage) {
+                element.removeEventListener(type, privateEventsStorage[events].handler);
+                delete privateEventsStorage[events];
+            }
+        }
+    };
+
+    /**
+     * @param {HTMLElement} element
+     * @param {string} events
+     * @param {Function} handler
+     * @param {boolean} once
+     * @returns {undefined}
+     */
+    // TODO: Class EventListener .on .one .off .trigger jQuery-like...
+    var attachEventListener = function attachEventListener(element, events, handler, once) {
+        if (!element || typeof events !== 'string' || typeof handler !== 'function') {
+            return;
+        }
+
+        events = events.split('.');
+
+        var type = events[0];
+        var namespace = events[1];
+
+        if (namespace) {
+            events = events.join(eventNamespaceParserSeparator);
+        }
+
+        privateEventsStorage[events] = { element: element, count: 0, once: false };
+
+        if (true === once) {
+            var _handler = handler;
+            handler = function handler(event) {
+                if (events in privateEventsStorage) {
+                    privateEventsStorage[events].count++;
+                    if (privateEventsStorage[events].once && privateEventsStorage[events].count > 1) {
+                        return;
+                    }
+                    _handler.call(this, event);
+                }
+                detachEventListener(element, events);
+            };
+        } else {
+            once = false;
+        }
+
+        privateEventsStorage[events] = _extends({}, privateEventsStorage[events], { handler: handler, once: once });
+
+        element.addEventListener(type, privateEventsStorage[events].handler, { once: once });
+    };
+
     var Griddie = function () {
-        function Griddie(options) {
+        function Griddie(element, options) {
             var _this = this;
 
             _classCallCheck(this, Griddie);
 
+            this._element = element;
+            this._items = [].concat(_toConsumableArray(this._element.children));
             this._options = {};
-            this.options = options;
             this._viewport = new Viewport();
+
+            this._element.instance = this;
+
+            this.options = options;
             this.layout();
-            window.addEventListener('resize', function () {
+            attachEventListener(window, 'resize.griddie', function () {
                 return _this.layout();
             });
         }
@@ -305,6 +425,10 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
                 var layoutChanges = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : function () {};
 
+                if (!('instance' in this._element)) {
+                    return;
+                }
+
                 var animation = new Promise(function (resolve, reject) {
                     var callback = function callback() {
                         _this2.clear();
@@ -313,8 +437,9 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                         _this2.transform(0);
 
                         requestAnimationFrame(function () {
-                            _this2._options.element.style.transition = 'height ' + _this2._options.transformTimingCSS + 's ease';
-                            [].concat(_toConsumableArray(_this2._options.items)).filter(function (item) {
+                            _this2._element.style.transition = 'height ' + _this2._options.transformTimingCSS + 's ease';
+
+                            [].concat(_toConsumableArray(_this2._items)).filter(function (item) {
                                 return item.style.display !== 'none';
                             }).forEach(function (item) {
                                 var transition = 'transform ' + _this2._options.transformTimingCSS + 's ease';
@@ -329,7 +454,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                                 return _this2.transform(1);
                             });
 
-                            attachTimeout(_this2._options.element, function () {
+                            attachTimeout(_this2._element, function () {
                                 _this2.clear();
                                 resolve();
                             }, _this2.options.transformTiming, 'transform');
@@ -360,22 +485,26 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
                 var _filter = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '*';
 
-                var matched = this._options.items.filter(function (x) {
+                if (!('instance' in this._element)) {
+                    return;
+                }
+
+                var matched = this._items.filter(function (x) {
                     return x.matches(_filter);
                 });
-                var unmatched = this._options.items.filter(function (x) {
+                var unmatched = this._items.filter(function (x) {
                     return !x.matches(_filter);
                 });
                 var hiddenMatched = matched.filter(function (x) {
                     return x.style.display === 'none';
                 });
                 var makeRoomBeforeFade = matched.length !== hiddenMatched.length;
+
                 var prepareFade = function prepareFade() {
-                    _this3._options.items.forEach(function (item) {
+                    _this3._items.forEach(function (item) {
                         item.style.transition = 'opacity ' + _this3._options.opacityTimingCSS + 's ease';
                     });
                 };
-
                 var fade = function fade() {
                     matched.forEach(function (item) {
                         item.style.opacity = 1;
@@ -385,9 +514,8 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                         item.style.opacity = 0;
                     });
                 };
-
                 var clearFade = function clearFade() {
-                    _this3._options.items.forEach(function (item) {
+                    _this3._items.forEach(function (item) {
                         item.style.transition = '';
                         item.style.opacity = '';
                     });
@@ -432,7 +560,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                                 requestAnimationFrame(function () {
                                     fade();
 
-                                    attachTimeout(_this3._options.element, function () {
+                                    attachTimeout(_this3._element, function () {
                                         clearFade();
 
                                         requestAnimationFrame(function () {
@@ -466,27 +594,44 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
         }, {
             key: 'destroy',
             value: function destroy() {
-                // TODO: do it
+                this.clear();
+                this._items.forEach(function (item) {
+                    item.style.gridRowEnd = ''; // TODO: possibly in clear()?
+                    item.style.display = ''; // TODO: possibly in clear()?
+                    delete item.rect;
+                });
+                delete this._element.rect;
+                detachTimeout(this._element, 'transform');
+                detachTimeout(this._element, 'opacity');
+                detachEventListener(window, 'resize.griddie');
+                delete this._element.instance;
             }
         }, {
             key: 'refresh',
-            value: function refresh() {}
-            // TODO: do it
-
+            value: function refresh() {
+                if (!('instance' in this._element)) {
+                    return;
+                }
+                // TODO: do it
+            }
 
             // TODO: private
 
         }, {
             key: 'layout',
             value: function layout() {
-                if (this._options.masonry) {
-                    var rowHeight = parseInt(window.getComputedStyle(this._options.element).getPropertyValue('grid-auto-rows'));
-                    var rowGap = parseInt(window.getComputedStyle(this._options.element).getPropertyValue('grid-row-gap'));
+                if (!('instance' in this._element)) {
+                    return;
+                }
 
-                    this._options.items.filter(function (item) {
+                if (this._options.masonry) {
+                    var rowHeight = parseInt(window.getComputedStyle(this._element).getPropertyValue('grid-auto-rows'));
+                    var rowGap = parseInt(window.getComputedStyle(this._element).getPropertyValue('grid-row-gap'));
+
+                    this._items.filter(function (item) {
                         return item.style.display !== 'none';
                     }).forEach(function (item) {
-                        var rowSpan = Math.ceil((item.querySelector('.content').getBoundingClientRect().height + rowGap) / (rowHeight + rowGap));
+                        var rowSpan = Math.ceil(([].concat(_toConsumableArray(item.children))[0].getBoundingClientRect().height + rowGap) / (rowHeight + rowGap));
                         item.style.gridRowEnd = 'span ' + rowSpan;
                     });
                 }
@@ -497,12 +642,16 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
         }, {
             key: 'clear',
             value: function clear() {
-                this._options.element.style.position = '';
-                this._options.element.style.width = '';
-                this._options.element.style.height = '';
-                this._options.element.style.transition = '';
+                if (!('instance' in this._element)) {
+                    return;
+                }
 
-                this._options.items.forEach(function (item) {
+                this._element.style.position = '';
+                this._element.style.width = '';
+                this._element.style.height = '';
+                this._element.style.transition = '';
+
+                this._items.forEach(function (item) {
                     item.style.transform = '';
                     item.style.transformOrigin = '';
                     item.style.position = '';
@@ -522,22 +671,26 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
                 var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
+                if (!('instance' in this._element)) {
+                    return;
+                }
+
                 this._viewport.calcScrollTop();
                 this._viewport.calcScrollLeft();
 
-                var gridRect = this._options.element.getBoundingClientRect();
-                if (!('rect' in this._options.element)) {
-                    this._options.element.rect = [];
+                var gridRect = this._element.getBoundingClientRect();
+                if (!('rect' in this._element)) {
+                    this._element.rect = [];
                 }
 
-                this._options.element.rect[id] = {
+                this._element.rect[id] = {
                     width: gridRect.width,
                     height: gridRect.height,
                     top: gridRect.top + this._viewport.scrollTop,
                     left: gridRect.left + this._viewport.scrollLeft
                 };
 
-                this._options.items.filter(function (item) {
+                this._items.filter(function (item) {
                     return item.style.display !== 'none';
                 }).forEach(function (item) {
                     if (!('rect' in item)) {
@@ -548,8 +701,8 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                     item.rect[id] = {
                         width: itemRect.width,
                         height: itemRect.height,
-                        top: itemRect.top + _this4._viewport.scrollTop - _this4._options.element.rect[id].top,
-                        left: itemRect.left + _this4._viewport.scrollLeft - _this4._options.element.rect[id].left,
+                        top: itemRect.top + _this4._viewport.scrollTop - _this4._element.rect[id].top,
+                        left: itemRect.left + _this4._viewport.scrollLeft - _this4._element.rect[id].left,
                         scaleX: 1,
                         scaleY: 1
                     };
@@ -581,11 +734,15 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
                 var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
-                this._options.element.style.position = 'relative';
-                this._options.element.style.width = this._options.element.rect[id].width + 'px';
-                this._options.element.style.height = this._options.element.rect[id].height + 'px';
+                if (!('instance' in this._element)) {
+                    return;
+                }
 
-                this._options.items.filter(function (item) {
+                this._element.style.position = 'relative';
+                this._element.style.width = this._element.rect[id].width + 'px';
+                this._element.style.height = this._element.rect[id].height + 'px';
+
+                this._items.filter(function (item) {
                     return item.style.display !== 'none';
                 }).forEach(function (item) {
                     var transform = 'translate3d(' + item.rect[id].left + 'px,' + item.rect[id].top + 'px, 0px)';
@@ -616,7 +773,6 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                 }, options);
                 this._options.transformTimingCSS = this.options.transformTiming / 1000;
                 this._options.opacityTimingCSS = this.options.opacityTiming / 1000;
-                this._options.items = [].concat(_toConsumableArray(this._options.element.children));
             },
             get: function get() {
                 return this._options;

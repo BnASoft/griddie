@@ -1,14 +1,20 @@
 import { isPromise } from './griddie.utils';
 import { attachTimeout, detachTimeout } from './toolbox/src/toolbox.timers';
 import { Viewport } from './toolbox/src/toolbox.viewport';
+import { attachEventListener, detachEventListener } from './toolbox/src/toolbox.events';
 
 export default class Griddie {
-    constructor(options) {
+    constructor(element, options) {
+        this._element = element;
+        this._items = [...this._element.children];
         this._options = {};
-        this.options = options;
         this._viewport = new Viewport();
+
+        this._element.instance = this;
+
+        this.options = options;
         this.layout();
-        window.addEventListener('resize', () => this.layout());
+        attachEventListener(window, 'resize.griddie', () => this.layout());
     }
 
     set options(options) {
@@ -23,7 +29,6 @@ export default class Griddie {
         };
         this._options.transformTimingCSS = this.options.transformTiming / 1000;
         this._options.opacityTimingCSS = this.options.opacityTiming / 1000;
-        this._options.items = [...this._options.element.children];
     }
 
     get options() {
@@ -31,6 +36,10 @@ export default class Griddie {
     }
 
     animate(layoutChanges = () => {}) {
+        if (!('instance' in this._element)) {
+            return;
+        }
+
         const animation = new Promise((resolve, reject) => {
             const callback = () => {
                 this.clear();
@@ -39,8 +48,9 @@ export default class Griddie {
                 this.transform(0);
 
                 requestAnimationFrame(() => {
-                    this._options.element.style.transition = 'height ' + this._options.transformTimingCSS + 's ease';
-                    [...this._options.items].filter(item => item.style.display !== 'none').forEach(item => {
+                    this._element.style.transition = 'height ' + this._options.transformTimingCSS + 's ease';
+
+                    [...this._items].filter(item => item.style.display !== 'none').forEach(item => {
                         let transition = 'transform ' + this._options.transformTimingCSS + 's ease';
                         if (!this.options.scaleXY) {
                             transition += ', width ' + this._options.transformTimingCSS + 's ease, height ' + this._options.transformTimingCSS + 's ease';
@@ -52,7 +62,7 @@ export default class Griddie {
                     requestAnimationFrame(() => this.transform(1));
 
                     attachTimeout(
-                        this._options.element,
+                        this._element,
                         () => {
                             this.clear();
                             resolve();
@@ -80,16 +90,20 @@ export default class Griddie {
     }
 
     filter(filter = '*') {
-        const matched = this._options.items.filter(x => x.matches(filter));
-        const unmatched = this._options.items.filter(x => !x.matches(filter));
+        if (!('instance' in this._element)) {
+            return;
+        }
+
+        const matched = this._items.filter(x => x.matches(filter));
+        const unmatched = this._items.filter(x => !x.matches(filter));
         const hiddenMatched = matched.filter(x => x.style.display === 'none');
         const makeRoomBeforeFade = matched.length !== hiddenMatched.length;
+
         const prepareFade = () => {
-            this._options.items.forEach(item => {
+            this._items.forEach(item => {
                 item.style.transition = 'opacity ' + this._options.opacityTimingCSS + 's ease';
             });
         };
-
         const fade = () => {
             matched.forEach(item => {
                 item.style.opacity = 1;
@@ -99,9 +113,8 @@ export default class Griddie {
                 item.style.opacity = 0;
             });
         };
-
         const clearFade = () => {
-            this._options.items.forEach(item => {
+            this._items.forEach(item => {
                 item.style.transition = '';
                 item.style.opacity = '';
             });
@@ -145,7 +158,7 @@ export default class Griddie {
                             fade();
 
                             attachTimeout(
-                                this._options.element,
+                                this._element,
                                 () => {
                                     clearFade();
 
@@ -178,21 +191,38 @@ export default class Griddie {
     }
 
     destroy() {
-        // TODO: do it
+        this.clear();
+        this._items.forEach(item => {
+            item.style.gridRowEnd = ''; // TODO: possibly in clear()?
+            item.style.display = ''; // TODO: possibly in clear()?
+            delete item.rect;
+        });
+        delete this._element.rect;
+        detachTimeout(this._element, 'transform');
+        detachTimeout(this._element, 'opacity');
+        detachEventListener(window, 'resize.griddie');
+        delete this._element.instance;
     }
 
     refresh() {
+        if (!('instance' in this._element)) {
+            return;
+        }
         // TODO: do it
     }
 
     // TODO: private
     layout() {
-        if (this._options.masonry) {
-            const rowHeight = parseInt(window.getComputedStyle(this._options.element).getPropertyValue('grid-auto-rows'));
-            const rowGap = parseInt(window.getComputedStyle(this._options.element).getPropertyValue('grid-row-gap'));
+        if (!('instance' in this._element)) {
+            return;
+        }
 
-            this._options.items.filter(item => item.style.display !== 'none').forEach(item => {
-                const rowSpan = Math.ceil((item.querySelector('.content').getBoundingClientRect().height + rowGap) / (rowHeight + rowGap));
+        if (this._options.masonry) {
+            const rowHeight = parseInt(window.getComputedStyle(this._element).getPropertyValue('grid-auto-rows'));
+            const rowGap = parseInt(window.getComputedStyle(this._element).getPropertyValue('grid-row-gap'));
+
+            this._items.filter(item => item.style.display !== 'none').forEach(item => {
+                const rowSpan = Math.ceil(([...item.children][0].getBoundingClientRect().height + rowGap) / (rowHeight + rowGap));
                 item.style.gridRowEnd = 'span ' + rowSpan;
             });
         }
@@ -200,12 +230,16 @@ export default class Griddie {
 
     // TODO: private
     clear() {
-        this._options.element.style.position = '';
-        this._options.element.style.width = '';
-        this._options.element.style.height = '';
-        this._options.element.style.transition = '';
+        if (!('instance' in this._element)) {
+            return;
+        }
 
-        this._options.items.forEach(item => {
+        this._element.style.position = '';
+        this._element.style.width = '';
+        this._element.style.height = '';
+        this._element.style.transition = '';
+
+        this._items.forEach(item => {
             item.style.transform = '';
             item.style.transformOrigin = '';
             item.style.position = '';
@@ -218,22 +252,26 @@ export default class Griddie {
 
     // TODO: private
     store(id = 0) {
+        if (!('instance' in this._element)) {
+            return;
+        }
+
         this._viewport.calcScrollTop();
         this._viewport.calcScrollLeft();
 
-        const gridRect = this._options.element.getBoundingClientRect();
-        if (!('rect' in this._options.element)) {
-            this._options.element.rect = [];
+        const gridRect = this._element.getBoundingClientRect();
+        if (!('rect' in this._element)) {
+            this._element.rect = [];
         }
 
-        this._options.element.rect[id] = {
+        this._element.rect[id] = {
             width: gridRect.width,
             height: gridRect.height,
             top: gridRect.top + this._viewport.scrollTop,
             left: gridRect.left + this._viewport.scrollLeft
         };
 
-        this._options.items.filter(item => item.style.display !== 'none').forEach(item => {
+        this._items.filter(item => item.style.display !== 'none').forEach(item => {
             if (!('rect' in item)) {
                 item.rect = [];
             }
@@ -242,8 +280,8 @@ export default class Griddie {
             item.rect[id] = {
                 width: itemRect.width,
                 height: itemRect.height,
-                top: itemRect.top + this._viewport.scrollTop - this._options.element.rect[id].top,
-                left: itemRect.left + this._viewport.scrollLeft - this._options.element.rect[id].left,
+                top: itemRect.top + this._viewport.scrollTop - this._element.rect[id].top,
+                left: itemRect.left + this._viewport.scrollLeft - this._element.rect[id].left,
                 scaleX: 1,
                 scaleY: 1
             };
@@ -268,11 +306,15 @@ export default class Griddie {
 
     // TODO: private
     transform(id = 0) {
-        this._options.element.style.position = 'relative';
-        this._options.element.style.width = this._options.element.rect[id].width + 'px';
-        this._options.element.style.height = this._options.element.rect[id].height + 'px';
+        if (!('instance' in this._element)) {
+            return;
+        }
 
-        this._options.items.filter(item => item.style.display !== 'none').forEach(item => {
+        this._element.style.position = 'relative';
+        this._element.style.width = this._element.rect[id].width + 'px';
+        this._element.style.height = this._element.rect[id].height + 'px';
+
+        this._items.filter(item => item.style.display !== 'none').forEach(item => {
             let transform = 'translate3d(' + item.rect[id].left + 'px,' + item.rect[id].top + 'px, 0px)';
 
             if (this.options.scaleXY) {

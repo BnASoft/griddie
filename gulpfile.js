@@ -169,7 +169,7 @@ gulp.task('default', ['clean', 'build'], () => {
     }
     clear();
     log('');
-    log('Griddie Build: ' + (production ? 'Production' : 'Development'));
+    log('griddie.js Build: ' + (production ? 'Production' : 'Development'));
     log('--------------------------------------');
     log(watchedFiles);
     log('--------------------------------------');

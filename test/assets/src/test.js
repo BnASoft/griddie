@@ -1,6 +1,5 @@
 [...document.querySelectorAll('.grid')].forEach(grid => {
-    const griddie = new Griddie({
-        element: grid,
+    const griddie = new Griddie(grid, {
         masonry: grid.classList.contains('masonry')
     });
 
