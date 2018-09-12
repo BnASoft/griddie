@@ -461,6 +461,8 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                         });
                     };
 
+                    detachTimeout(_this2._element, 'transform');
+
                     _this2.clear();
                     _this2.store(0);
                     _this2.transform(0);
@@ -530,6 +532,8 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                 };
 
                 var animation = this.animate(function () {
+                    detachTimeout(_this3._element, 'opacity');
+
                     var fadeAfterAnimation = new Promise(function (resolve, reject) {
                         var onFadeEnd = function onFadeEnd() {
                             _this3.store(0);

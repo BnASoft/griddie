@@ -73,6 +73,8 @@ export default class Griddie {
                 });
             };
 
+            detachTimeout(this._element, 'transform');
+
             this.clear();
             this.store(0);
             this.transform(0);
@@ -129,6 +131,8 @@ export default class Griddie {
         };
 
         const animation = this.animate(() => {
+            detachTimeout(this._element, 'opacity');
+
             const fadeAfterAnimation = new Promise((resolve, reject) => {
                 const onFadeEnd = () => {
                     this.store(0);
