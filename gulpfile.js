@@ -40,7 +40,7 @@ const watch = require('gulp-watch');
 const gulpif = require('gulp-if');
 const pump = require('pump');
 const rename = require('gulp-rename');
-const del = require('del');
+//const del = require('del');
 const rollup = require('gulp-better-rollup');
 const sourcemaps = require('gulp-sourcemaps');
 const babel = require('gulp-babel');
@@ -50,6 +50,7 @@ const minify = require('gulp-minify');
 const autoprefixer = require('autoprefixer');
 const log = require('fancy-log');
 const clear = require('clear');
+const hb = require('gulp-hb');
 
 const resources = [
     {
@@ -58,7 +59,10 @@ const resources = [
             dist: './dist/'
         },
         files: {
-            js: { module: 'Griddie', list: ['griddie.js'] }
+            js: {
+                module: 'Griddie',
+                list: ['griddie.js']
+            }
         }
     },
     {
@@ -68,17 +72,18 @@ const resources = [
         },
         files: {
             js: { list: ['test.js'] },
-            css: { list: ['test.scss'] }
+            css: { list: ['test.scss'] },
+            hbs: { list: ['index.html'], dist: './test/' }
         }
     }
 ];
 
 const sourcemapsConf = { loadMaps: true, largeFile: true };
 
-let watchedFiles = [];
+let processedFiles = [];
 resources.forEach(resource => {
     for (let type in resource.files) {
-        watchedFiles = watchedFiles.concat(resource.paths.src + resource.files[type].list);
+        processedFiles = processedFiles.concat(resource.paths.src + resource.files[type].list);
     }
 });
 
@@ -86,16 +91,10 @@ let pumpCounter = 0;
 const pumpCallback = args => {
     pumpCounter++;
 
-    if (pumpCounter === watchedFiles.length) {
+    if (pumpCounter === processedFiles.length) {
         args[0]();
     }
 };
-
-gulp.task('clean', done => {
-    resources.forEach(resource => del.sync(resource.paths.dist));
-
-    done();
-});
 
 gulp.task('build', callback => {
     pumpCounter = 0;
@@ -103,74 +102,108 @@ gulp.task('build', callback => {
     resources.forEach(resource => {
         // js files
         if ('js' in resource.files && resource.files.js.list.length) {
+            const src = 'src' in resource.files.js ? resource.files.css.js : resource.paths.src;
+            const dst = 'dist' in resource.files.js ? resource.files.css.js : resource.paths.dist;
             const isModule = 'module' in resource.files.js && !!resource.files.js.module;
             const moduleConf = {
                 name: resource.files.js.module,
                 format: 'umd'
             };
 
-            // prettier-ignore
-            resource.files.js.list.forEach(filename => pump([
+            resource.files.js.list.forEach(filename => {
+                pump(
+                    [
+                        // rollup modules + transpilation to ES5 (production only)
+                        gulp.src(src + filename),
+                        gulpif(production, sourcemaps.init(sourcemapsConf)),
+                        gulpif(isModule, rollup({}, moduleConf).on('error', err => log(err))),
+                        gulpif(production, babel().on('error', err => log(err))),
+                        gulpif(production, sourcemaps.write('.')),
+                        gulp.dest(dst),
 
-				// rollup modules + transpilation to ES5 (production only)
-				gulp.src(resource.paths.src + filename),
-				gulpif(production, sourcemaps.init(sourcemapsConf)),
-                gulpif(isModule, rollup({}, moduleConf).on('error', err => log(err))),
-				gulpif(production, babel().on('error', err => log(err))),
-				gulpif(production, sourcemaps.write('.')),
-				gulp.dest(resource.paths.dist),
-
-				// minification (production only)
-				gulpif(production, gulp.src(resource.paths.src + filename)),
-				gulpif(production, sourcemaps.init(sourcemapsConf)),
-                gulpif(production && isModule, rollup({}, moduleConf).on('error', err => log(err))),
-                gulpif(production, babel().on('error', err => log(err))),
-				gulpif(production, minify({ ext: { min: '.min.js' } })),
-				gulpif(production, sourcemaps.write('.')),
-				gulpif(production, gulp.dest(resource.paths.dist))
-
-			], pumpCallback.bind(this, [callback])));
+                        // minification (production only)
+                        gulpif(production, gulp.src(src + filename)),
+                        gulpif(production, sourcemaps.init(sourcemapsConf)),
+                        gulpif(production && isModule, rollup({}, moduleConf).on('error', err => log(err))),
+                        gulpif(production, babel().on('error', err => log(err))),
+                        gulpif(production, minify({ ext: { min: '.min.js' } })),
+                        gulpif(production, sourcemaps.write('.')),
+                        gulpif(production, gulp.dest(dst))
+                    ],
+                    pumpCallback.bind(this, [callback])
+                );
+            });
         }
 
         // css files
         if ('css' in resource.files && resource.files.css.list.length) {
-            // prettier-ignore
-            resource.files.css.list.forEach(filename => pump([
+            const src = 'src' in resource.files.css ? resource.files.css.src : resource.paths.src;
+            const dst = 'dist' in resource.files.css ? resource.files.css.src : resource.paths.dist;
 
-				// transpilation to standard CSS
-				gulp.src(resource.paths.src + filename),
-				gulpif(production,sourcemaps.init(sourcemapsConf)),
-				sass({ outputStyle: 'expanded', onError : err => log(err) }),
-				postcss([autoprefixer()]).on('error', err => log(err)),
-				gulpif(production, sourcemaps.write('.')),
-				gulp.dest(resource.paths.dist),
+            resource.files.css.list.forEach(filename => {
+                pump(
+                    [
+                        // transpilation to standard CSS
+                        gulp.src(src + filename),
+                        gulpif(production, sourcemaps.init(sourcemapsConf)),
+                        sass({ outputStyle: 'expanded', onError: err => log(err) }),
+                        postcss([autoprefixer()]).on('error', err => log(err)),
+                        gulpif(production, sourcemaps.write('.')),
+                        gulp.dest(dst),
 
-				// minification (production only)
-				gulpif(production, gulp.src(resource.paths.src + filename)),
-				gulpif(production, sourcemaps.init(sourcemapsConf)),
-                gulpif(production, sass({ outputStyle: 'compressed', onError: err => log(err) })),
-                gulpif(production, postcss([autoprefixer()])).on('error', err => log(err)),
-				gulpif(production, rename({ suffix: '.min' })),
-				gulpif(production, sourcemaps.write('.')),
-				gulpif(production, gulp.dest(resource.paths.dist)),
+                        // minification (production only)
+                        gulpif(production, gulp.src(src + filename)),
+                        gulpif(production, sourcemaps.init(sourcemapsConf)),
+                        gulpif(production, sass({ outputStyle: 'compressed', onError: err => log(err) })),
+                        gulpif(production, postcss([autoprefixer()])).on('error', err => log(err)),
+                        gulpif(production, rename({ suffix: '.min' })),
+                        gulpif(production, sourcemaps.write('.')),
+                        gulpif(production, gulp.dest(dst))
+                    ],
+                    pumpCallback.bind(this, [callback])
+                );
+            });
+        }
 
-			], pumpCallback.bind(this, [callback])));
+        // template files
+        if ('hbs' in resource.files && resource.files.hbs.list.length) {
+            const src = 'src' in resource.files.hbs ? resource.files.hbs.src : resource.paths.src;
+            const dst = 'dist' in resource.files.hbs ? resource.files.hbs.dist : resource.paths.dist;
+
+            resource.files.hbs.list.forEach(filename => {
+                const namespace = filename.replace('.html', '');
+
+                log(src + namespace + '.json');
+
+                pump(
+                    [
+                        gulp.src(src + filename),
+                        hb()
+                            .data(src + namespace + '.json')
+                            //.helpers(src + '*.js')
+                            .partials(src + namespace + '.*.hbs'),
+                        gulp.dest(dst)
+                    ],
+                    pumpCallback.bind(this, [callback])
+                );
+            });
         }
     });
 
     if (!production && !arg.nowatch) {
-        gulp.watch(watchedFiles, ['default']);
+        gulp.watch('./**/src/*.{scss,index,json,hbs,js}', ['default']);
     }
 });
 
-gulp.task('default', ['clean', 'build'], () => {
-    if (debug) {
-        return;
+gulp.task('default', ['build'], () => {
+    if (!debug) {
+        clear();
+        log('');
     }
-    clear();
+    log('--------------------------------------');
+    log('Build: ' + (production ? 'Production' : 'Development'));
+    log('--------------------------------------');
+    log(processedFiles);
+    log('--------------------------------------');
     log('');
-    log('griddie.js Build: ' + (production ? 'Production' : 'Development'));
-    log('--------------------------------------');
-    log(watchedFiles);
-    log('--------------------------------------');
 });
