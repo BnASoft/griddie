@@ -173,13 +173,55 @@ gulp.task('build', callback => {
             resource.files.hbs.list.forEach(filename => {
                 const namespace = filename.replace('.html', '');
 
-                log(src + namespace + '.json');
-
                 pump(
                     [
                         gulp.src(src + filename),
                         hb()
                             .data(src + namespace + '.json')
+                            .data({
+                                items: [
+                                    {
+                                        type: 'photo',
+                                        title: 'prova',
+                                        content: 'buooo'
+                                    },
+                                    {
+                                        type: 'project',
+                                        title: 'prova',
+                                        content: 'buooo'
+                                    },
+                                    {
+                                        type: 'post',
+                                        title: 'prova',
+                                        content: 'buooo'
+                                    },
+                                    {
+                                        type: 'project',
+                                        title: 'prova',
+                                        content: 'buooo'
+                                    },
+                                    {
+                                        type: 'post',
+                                        title: 'prova',
+                                        content: 'buooo'
+                                    },
+                                    {
+                                        type: 'project',
+                                        title: 'prova',
+                                        content: 'buooo'
+                                    },
+                                    {
+                                        type: 'post',
+                                        title: 'prova',
+                                        content: 'buooo'
+                                    },
+                                    {
+                                        type: 'photo',
+                                        title: 'prova',
+                                        content: 'buooo'
+                                    }
+                                ]
+                            })
                             //.helpers(src + '*.js')
                             .partials(src + namespace + '.*.hbs'),
                         gulp.dest(dst)
