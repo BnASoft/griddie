@@ -2,7 +2,6 @@
 // gulp
 // gulp --development
 // gulp --development --nowatch
-// gulp --debugger
 
 'use strict';
 
@@ -33,14 +32,11 @@ const arg = (argList => {
 })(process.argv);
 
 const production = !arg.development;
-const debug = arg.debugger;
-
 const gulp = require('gulp');
 const watch = require('gulp-watch');
 const gulpif = require('gulp-if');
 const pump = require('pump');
 const rename = require('gulp-rename');
-//const del = require('del');
 const rollup = require('gulp-better-rollup');
 const sourcemaps = require('gulp-sourcemaps');
 const babel = require('gulp-babel');
@@ -49,8 +45,10 @@ const postcss = require('gulp-postcss');
 const minify = require('gulp-minify');
 const autoprefixer = require('autoprefixer');
 const log = require('fancy-log');
-const clear = require('clear');
 const hb = require('gulp-hb');
+
+const sourcemapsConf = { loadMaps: true, largeFile: true };
+const doWatch = !production && !arg.nowatch;
 
 const resources = [
     {
@@ -73,179 +71,98 @@ const resources = [
         files: {
             js: { list: ['test.js'] },
             css: { list: ['test.scss'] },
-            hbs: { list: ['index.html'], dist: './test/' }
+            hbs: { list: ['index.hbs'], dist: './test/' }
         }
     }
 ];
 
-const sourcemapsConf = { loadMaps: true, largeFile: true };
-
-let processedFiles = [];
-resources.forEach(resource => {
-    for (let type in resource.files) {
-        processedFiles = processedFiles.concat(resource.paths.src + resource.files[type].list);
-    }
-});
-
-let pumpCounter = 0;
-const pumpCallback = args => {
-    pumpCounter++;
-
-    if (pumpCounter === processedFiles.length) {
-        args[0]();
-    }
-};
-
-gulp.task('build', callback => {
-    pumpCounter = 0;
-
+gulp.task('_js', callback =>
     resources.forEach(resource => {
-        // js files
         if ('js' in resource.files && resource.files.js.list.length) {
             const src = 'src' in resource.files.js ? resource.files.css.js : resource.paths.src;
             const dst = 'dist' in resource.files.js ? resource.files.css.js : resource.paths.dist;
-            const isModule = 'module' in resource.files.js && !!resource.files.js.module;
-            const moduleConf = {
-                name: resource.files.js.module,
-                format: 'umd'
-            };
 
-            resource.files.js.list.forEach(filename => {
+            resource.files.js.list.forEach(filename =>
                 pump(
                     [
-                        // rollup modules + transpilation to ES5 (production only)
                         gulp.src(src + filename),
                         gulpif(production, sourcemaps.init(sourcemapsConf)),
-                        gulpif(isModule, rollup({}, moduleConf).on('error', err => log(err))),
+                        gulpif(
+                            'module' in resource.files.js && !!resource.files.js.module,
+                            rollup(
+                                {},
+                                {
+                                    name: resource.files.js.module,
+                                    format: 'umd'
+                                }
+                            ).on('error', err => log(err))
+                        ),
                         gulpif(production, babel().on('error', err => log(err))),
+                        //gulpif(production, minify({ ext: { min: '.min.js' } })),
                         gulpif(production, sourcemaps.write('.')),
-                        gulp.dest(dst),
-
-                        // minification (production only)
-                        gulpif(production, gulp.src(src + filename)),
-                        gulpif(production, sourcemaps.init(sourcemapsConf)),
-                        gulpif(production && isModule, rollup({}, moduleConf).on('error', err => log(err))),
-                        gulpif(production, babel().on('error', err => log(err))),
-                        gulpif(production, minify({ ext: { min: '.min.js' } })),
-                        gulpif(production, sourcemaps.write('.')),
-                        gulpif(production, gulp.dest(dst))
+                        gulp.dest(dst)
                     ],
-                    pumpCallback.bind(this, [callback])
-                );
-            });
+                    callback
+                )
+            );
         }
+    })
+);
 
-        // css files
+gulp.task('_css', callback =>
+    resources.forEach(resource => {
         if ('css' in resource.files && resource.files.css.list.length) {
             const src = 'src' in resource.files.css ? resource.files.css.src : resource.paths.src;
             const dst = 'dist' in resource.files.css ? resource.files.css.src : resource.paths.dist;
 
-            resource.files.css.list.forEach(filename => {
+            resource.files.css.list.forEach(filename =>
                 pump(
                     [
-                        // transpilation to standard CSS
                         gulp.src(src + filename),
                         gulpif(production, sourcemaps.init(sourcemapsConf)),
                         sass({ outputStyle: 'expanded', onError: err => log(err) }),
+                        //gulpif(production, sass({ outputStyle: 'compressed', onError: err => log(err) })),
+                        //gulpif(production, rename({ suffix: '.min' })),
                         postcss([autoprefixer()]).on('error', err => log(err)),
                         gulpif(production, sourcemaps.write('.')),
-                        gulp.dest(dst),
-
-                        // minification (production only)
-                        gulpif(production, gulp.src(src + filename)),
-                        gulpif(production, sourcemaps.init(sourcemapsConf)),
-                        gulpif(production, sass({ outputStyle: 'compressed', onError: err => log(err) })),
-                        gulpif(production, postcss([autoprefixer()])).on('error', err => log(err)),
-                        gulpif(production, rename({ suffix: '.min' })),
-                        gulpif(production, sourcemaps.write('.')),
-                        gulpif(production, gulp.dest(dst))
+                        gulp.dest(dst)
                     ],
-                    pumpCallback.bind(this, [callback])
-                );
-            });
+                    callback
+                )
+            );
         }
+    })
+);
 
-        // template files
+gulp.task('_hbs', callback =>
+    resources.forEach(resource => {
         if ('hbs' in resource.files && resource.files.hbs.list.length) {
             const src = 'src' in resource.files.hbs ? resource.files.hbs.src : resource.paths.src;
             const dst = 'dist' in resource.files.hbs ? resource.files.hbs.dist : resource.paths.dist;
 
             resource.files.hbs.list.forEach(filename => {
-                const namespace = filename.replace('.html', '');
+                const path = src + filename.replace('.hbs', '');
+                const data = require(path + '.json');
 
                 pump(
                     [
                         gulp.src(src + filename),
                         hb()
-                            .data(src + namespace + '.json')
-                            .data({
-                                items: [
-                                    {
-                                        type: 'photo',
-                                        title: 'prova',
-                                        content: 'buooo'
-                                    },
-                                    {
-                                        type: 'project',
-                                        title: 'prova',
-                                        content: 'buooo'
-                                    },
-                                    {
-                                        type: 'post',
-                                        title: 'prova',
-                                        content: 'buooo'
-                                    },
-                                    {
-                                        type: 'project',
-                                        title: 'prova',
-                                        content: 'buooo'
-                                    },
-                                    {
-                                        type: 'post',
-                                        title: 'prova',
-                                        content: 'buooo'
-                                    },
-                                    {
-                                        type: 'project',
-                                        title: 'prova',
-                                        content: 'buooo'
-                                    },
-                                    {
-                                        type: 'post',
-                                        title: 'prova',
-                                        content: 'buooo'
-                                    },
-                                    {
-                                        type: 'photo',
-                                        title: 'prova',
-                                        content: 'buooo'
-                                    }
-                                ]
-                            })
-                            //.helpers(src + '*.js')
-                            .partials(src + namespace + '.*.hbs'),
+                            .data(data)
+                            .partials(path + '.*.hbs'),
+                        gulp.dest(dst),
+                        gulp.src(src + '.hbs'),
+                        rename({ extname: '.html' }),
                         gulp.dest(dst)
                     ],
-                    pumpCallback.bind(this, [callback])
+                    callback
                 );
             });
         }
-    });
+    })
+);
 
-    if (!production && !arg.nowatch) {
-        gulp.watch('./**/src/*.{scss,index,json,hbs,js}', ['default']);
-    }
-});
-
-gulp.task('default', ['build'], () => {
-    if (!debug) {
-        clear();
-        log('');
-    }
-    log('--------------------------------------');
-    log('Build: ' + (production ? 'Production' : 'Development'));
-    log('--------------------------------------');
-    log(processedFiles);
-    log('--------------------------------------');
-    log('');
-});
+gulp.task('js', ['_js']);
+gulp.task('css', ['_css']);
+gulp.task('hbs', ['_hbs']);
+gulp.task('default', ['_js', '_css', '_hbs']);
