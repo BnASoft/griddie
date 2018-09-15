@@ -1,7 +1,6 @@
 // command list:
-// gulp
-// gulp --development
-// gulp --development --nowatch
+// gulp <task>
+// gulp <task> --development
 
 'use strict';
 
@@ -46,123 +45,152 @@ const minify = require('gulp-minify');
 const autoprefixer = require('autoprefixer');
 const log = require('fancy-log');
 const hb = require('gulp-hb');
+const clearRequire = module => {
+    delete require.cache[require.resolve(module)];
+    return require(module);
+};
+const buildConfig = require('./build.json')[0];
+const resources = buildConfig.resources;
 
-const sourcemapsConf = { loadMaps: true, largeFile: true };
-const doWatch = !production && !arg.nowatch;
+let processedFiles = {
+    css: [],
+    js: [],
+    html: []
+};
 
-const resources = [
-    {
-        paths: {
-            src: './src/',
-            dist: './dist/'
-        },
-        files: {
-            js: {
-                module: 'Griddie',
-                list: ['griddie.js']
-            }
-        }
-    },
-    {
-        paths: {
-            src: './test/assets/src/',
-            dist: './test/assets/dist/'
-        },
-        files: {
-            js: { list: ['test.js'] },
-            css: { list: ['test.scss'] },
-            hbs: { list: ['index.hbs'], dist: './test/' }
-        }
-    }
-];
+gulp.task('build-js', callback => {
+    let pipe = [];
 
-gulp.task('_js', callback =>
+    processedFiles.js = [];
+
     resources.forEach(resource => {
         if ('js' in resource.files && resource.files.js.list.length) {
             const src = 'src' in resource.files.js ? resource.files.css.js : resource.paths.src;
             const dst = 'dist' in resource.files.js ? resource.files.css.js : resource.paths.dist;
 
-            resource.files.js.list.forEach(filename =>
-                pump(
-                    [
-                        gulp.src(src + filename),
-                        gulpif(production, sourcemaps.init(sourcemapsConf)),
-                        gulpif(
-                            'module' in resource.files.js && !!resource.files.js.module,
-                            rollup(
-                                {},
-                                {
-                                    name: resource.files.js.module,
-                                    format: 'umd'
-                                }
-                            ).on('error', err => log(err))
-                        ),
-                        gulpif(production, babel().on('error', err => log(err))),
-                        //gulpif(production, minify({ ext: { min: '.min.js' } })),
-                        gulpif(production, sourcemaps.write('.')),
-                        gulp.dest(dst)
-                    ],
-                    callback
-                )
-            );
-        }
-    })
-);
+            resource.files.js.list.forEach(filename => {
+                const source = src + filename;
 
-gulp.task('_css', callback =>
+                processedFiles.js.push(source);
+
+                pipe = pipe.concat([
+                    gulp.src(source),
+                    sourcemaps.init(buildConfig.sourcemaps),
+                    gulpif(
+                        'module' in resource.files.js && !!resource.files.js.module,
+                        rollup(
+                            {},
+                            {
+                                name: resource.files.js.module,
+                                format: 'umd'
+                            }
+                        ).on('error', err => log(err))
+                    ),
+                    babel().on('error', err => log(err)),
+                    sourcemaps.write('.'),
+                    gulp.dest(dst),
+
+                    gulp.src(source), // FIXME: fix repeated code for minify
+                    sourcemaps.init(buildConfig.sourcemaps),
+                    gulpif(
+                        'module' in resource.files.js && !!resource.files.js.module,
+                        rollup(
+                            {},
+                            {
+                                name: resource.files.js.module,
+                                format: 'umd'
+                            }
+                        ).on('error', err => log(err))
+                    ),
+                    babel().on('error', err => log(err)),
+                    minify({ ext: { min: '.min.js' } }),
+                    sourcemaps.write('.'),
+                    gulp.dest(dst)
+                ]);
+            });
+        }
+    });
+
+    pump(pipe, callback);
+});
+
+gulp.task('build-css', callback => {
+    let pipe = [];
+
     resources.forEach(resource => {
         if ('css' in resource.files && resource.files.css.list.length) {
             const src = 'src' in resource.files.css ? resource.files.css.src : resource.paths.src;
             const dst = 'dist' in resource.files.css ? resource.files.css.src : resource.paths.dist;
 
-            resource.files.css.list.forEach(filename =>
-                pump(
-                    [
-                        gulp.src(src + filename),
-                        gulpif(production, sourcemaps.init(sourcemapsConf)),
-                        sass({ outputStyle: 'expanded', onError: err => log(err) }),
-                        //gulpif(production, sass({ outputStyle: 'compressed', onError: err => log(err) })),
-                        //gulpif(production, rename({ suffix: '.min' })),
-                        postcss([autoprefixer()]).on('error', err => log(err)),
-                        gulpif(production, sourcemaps.write('.')),
-                        gulp.dest(dst)
-                    ],
-                    callback
-                )
-            );
-        }
-    })
-);
+            resource.files.css.list.forEach(filename => {
+                const source = src + filename;
 
-gulp.task('_hbs', callback =>
+                processedFiles.css.push(source);
+
+                pipe = pipe.concat([
+                    gulp.src(source),
+                    gulpif(production, sourcemaps.init(buildConfig.sourcemaps)),
+                    sass({ outputStyle: 'expanded', onError: err => log(err) }),
+                    postcss([autoprefixer()]).on('error', err => log(err)),
+                    gulpif(production, sourcemaps.write('.')),
+                    gulp.dest(dst),
+
+                    gulp.src(source), // FIXME: fix repeated code for minify
+                    sourcemaps.init(buildConfig.sourcemaps),
+                    sass({ outputStyle: 'compressed', onError: err => log(err) }),
+                    rename({ suffix: '.min' }),
+                    sourcemaps.write('.'),
+                    gulp.dest(dst)
+                ]);
+            });
+        }
+    });
+
+    pump(pipe, callback);
+});
+
+gulp.task('build-html', callback => {
+    let pipe = [];
+
     resources.forEach(resource => {
         if ('hbs' in resource.files && resource.files.hbs.list.length) {
             const src = 'src' in resource.files.hbs ? resource.files.hbs.src : resource.paths.src;
             const dst = 'dist' in resource.files.hbs ? resource.files.hbs.dist : resource.paths.dist;
 
             resource.files.hbs.list.forEach(filename => {
-                const path = src + filename.replace('.hbs', '');
-                const data = require(path + '.json');
+                const source = src + filename;
 
-                pump(
-                    [
-                        gulp.src(src + filename),
-                        hb()
-                            .data(data)
-                            .partials(path + '.*.hbs'),
-                        gulp.dest(dst),
-                        gulp.src(src + '.hbs'),
-                        rename({ extname: '.html' }),
-                        gulp.dest(dst)
-                    ],
-                    callback
-                );
+                processedFiles.html.push(source);
+
+                const path = source.replace('.hbs', '');
+                const jsons = path + '.json';
+                const data = clearRequire(jsons);
+
+                processedFiles.html.push(path + '.json');
+
+                const hbs = path + '.*.hbs';
+                processedFiles.html.push(hbs);
+
+                pipe = pipe.concat([
+                    gulp.src(source),
+                    hb({ bustCache: true })
+                        .data(data)
+                        .partials(hbs),
+                    rename({ extname: '.html' }),
+                    gulp.dest(dst)
+                ]);
             });
         }
-    })
-);
+    });
 
-gulp.task('js', ['_js']);
-gulp.task('css', ['_css']);
-gulp.task('hbs', ['_hbs']);
-gulp.task('default', ['_js', '_css', '_hbs']);
+    pump(pipe, callback);
+});
+
+gulp.task('js', ['build-js'], () => gulp.watch(processedFiles.js, ['build-js']));
+gulp.task('css', ['build-css'], () => gulp.watch(processedFiles.css, ['build-css']));
+gulp.task('html', ['build-html'], () => gulp.watch(processedFiles.html, ['build-html']));
+gulp.task('default', ['build-js', 'build-css', 'build-html'], () => {
+    gulp.watch(processedFiles.js, ['build-js']);
+    gulp.watch(processedFiles.css, ['build-css']);
+    gulp.watch(processedFiles.html, ['build-html']);
+});
