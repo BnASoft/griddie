@@ -30,7 +30,6 @@ const arg = (argList => {
     return arg;
 })(process.argv);
 
-const production = !arg.development;
 const gulp = require('gulp');
 const watch = require('gulp-watch');
 const gulpif = require('gulp-if');
@@ -38,6 +37,7 @@ const pump = require('pump');
 const rename = require('gulp-rename');
 const rollup = require('gulp-better-rollup');
 const sourcemaps = require('gulp-sourcemaps');
+const csso = require('gulp-csso');
 const babel = require('gulp-babel');
 const sass = require('gulp-sass');
 const postcss = require('gulp-postcss');
@@ -45,13 +45,15 @@ const minify = require('gulp-minify');
 const autoprefixer = require('autoprefixer');
 const log = require('fancy-log');
 const hb = require('gulp-hb');
+const clone = require('gulp-clone');
+
+const production = !arg.development;
 const clearRequire = module => {
     delete require.cache[require.resolve(module)];
     return require(module);
 };
 const buildConfig = require('./build.json')[0];
 const resources = buildConfig.resources;
-
 let processedFiles = {
     css: [],
     js: [],
@@ -73,25 +75,12 @@ gulp.task('build-js', callback => {
 
                 processedFiles.js.push(source);
 
-                pipe = pipe.concat([
-                    gulp.src(source),
-                    sourcemaps.init(buildConfig.sourcemaps),
-                    gulpif(
-                        'module' in resource.files.js && !!resource.files.js.module,
-                        rollup(
-                            {},
-                            {
-                                name: resource.files.js.module,
-                                format: 'umd'
-                            }
-                        ).on('error', err => log(err))
-                    ),
-                    babel().on('error', err => log(err)),
-                    sourcemaps.write('.'),
-                    gulp.dest(dst),
+                const cloneSink = clone.sink();
 
-                    gulp.src(source), // FIXME: fix repeated code for minify
-                    sourcemaps.init(buildConfig.sourcemaps),
+                pipe = pipe.concat([
+                    // transpilation
+                    gulp.src(source),
+                    sourcemaps.init(),
                     gulpif(
                         'module' in resource.files.js && !!resource.files.js.module,
                         rollup(
@@ -103,6 +92,12 @@ gulp.task('build-js', callback => {
                         ).on('error', err => log(err))
                     ),
                     babel().on('error', err => log(err)),
+                    cloneSink,
+                    //cloneSink.tap(), // TODO: check, this is not needed for some reason
+                    //sourcemaps.write('.'), // TODO: check, this is not needed for some reason
+                    gulp.dest(dst),
+                    // minification copy stream
+                    cloneSink.tap(),
                     minify({ ext: { min: '.min.js' } }),
                     sourcemaps.write('.'),
                     gulp.dest(dst)
@@ -127,17 +122,21 @@ gulp.task('build-css', callback => {
 
                 processedFiles.css.push(source);
 
-                pipe = pipe.concat([
-                    gulp.src(source),
-                    gulpif(production, sourcemaps.init(buildConfig.sourcemaps)),
-                    sass({ outputStyle: 'expanded', onError: err => log(err) }),
-                    postcss([autoprefixer()]).on('error', err => log(err)),
-                    gulpif(production, sourcemaps.write('.')),
-                    gulp.dest(dst),
+                const cloneSink = clone.sink();
 
-                    gulp.src(source), // FIXME: fix repeated code for minify
-                    sourcemaps.init(buildConfig.sourcemaps),
-                    sass({ outputStyle: 'compressed', onError: err => log(err) }),
+                pipe = pipe.concat([
+                    // transpilation
+                    gulp.src(source),
+                    sourcemaps.init(),
+                    sass({ outputStyle: 'nested', onError: err => log(err) }),
+                    postcss([autoprefixer()]).on('error', err => log(err)),
+                    cloneSink,
+                    cloneSink.tap(),
+                    sourcemaps.write('.'),
+                    gulp.dest(dst),
+                    // minification copy stream
+                    cloneSink.tap(),
+                    csso(),
                     rename({ suffix: '.min' }),
                     sourcemaps.write('.'),
                     gulp.dest(dst)

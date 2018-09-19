@@ -9,6 +9,8 @@
     "author": "",
     "license": "ISC",
     "devDependencies": {
+        "gulp-clone": "^2.0.1",
+        "gulp-csso": "^3.0.1",
         "gulp-hb": "^7.0.1"
     },
     "dependencies": {
