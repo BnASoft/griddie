@@ -1,2 +1,3 @@
 # griddie
+Auto animate layout updates, CSS grids helper for masonry layouts, elements filtering and much more...
 ## wip
