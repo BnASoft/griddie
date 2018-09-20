@@ -1,3 +1,5 @@
+import Griddie from '../../../src/griddie.js';
+
 [...document.querySelectorAll('.grid')].forEach(grid => {
     const griddie = new Griddie(grid, {
         masonry: grid.classList.contains('masonry')

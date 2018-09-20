@@ -1,7 +1,7 @@
-import { isPromise } from './griddie.utils';
-import { attachTimeout, detachTimeout } from './toolbox/src/toolbox.timers';
-import { Viewport } from './toolbox/src/toolbox.viewport';
-import { attachEventListener, detachEventListener } from './toolbox/src/toolbox.events';
+import { isPromise } from './griddie.utils.js';
+import { attachTimeout, detachTimeout } from './toolbox/src/toolbox.timers.js';
+import { Viewport } from './toolbox/src/toolbox.viewport.js';
+import { attachEventListener, detachEventListener } from './toolbox/src/toolbox.events.js';
 
 export default class Griddie {
     constructor(element, options) {

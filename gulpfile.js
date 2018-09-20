@@ -93,8 +93,6 @@ gulp.task('build-js', callback => {
                     ),
                     babel().on('error', err => log(err)),
                     cloneSink,
-                    //cloneSink.tap(), // TODO: check, this is not needed for some reason
-                    //sourcemaps.write('.'), // TODO: check, this is not needed for some reason
                     gulp.dest(dst),
                     // minification copy stream
                     cloneSink.tap(),
@@ -175,8 +173,16 @@ gulp.task('build-html', callback => {
                     hb({ bustCache: true })
                         .data(data)
                         .data({
-                            library: `../dist/griddie${production ? '.min' : ''}.js`,
-                            js: `assets/${production ? 'dist' : 'src'}/test${production ? '.min' : ''}.js`,
+                            library: {
+                                src: `../${production ? 'dist' : 'src'}/griddie${production ? '.min' : ''}.js`, // you'll need #enable-experimental-web-platform-features flag enabled under chrome://flags
+                                type: !production ? 'module' : 'text/javascript',
+                                attrs: ''
+                            },
+                            js: {
+                                src: `assets/${production ? 'dist' : 'src'}/test${production ? '.min' : ''}.js`,
+                                type: !production ? 'module' : 'text/javascript',
+                                attrs: !production ? 'defer' : ''
+                            },
                             css: `assets/dist/test${production ? '.min' : ''}.css`,
                             title: `Griddie.js ${production ? 'Playground' : 'Dev'}`
                         })
