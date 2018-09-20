@@ -175,7 +175,7 @@ gulp.task('build-html', callback => {
                     hb({ bustCache: true })
                         .data(data)
                         .data({
-                            library: `../${production ? 'dist' : 'src'}/griddie${production ? '.min' : ''}.js`,
+                            library: `../dist/griddie${production ? '.min' : ''}.js`,
                             js: `assets/${production ? 'dist' : 'src'}/test${production ? '.min' : ''}.js`,
                             css: `assets/dist/test${production ? '.min' : ''}.css`,
                             title: `Griddie.js ${production ? 'Playground' : 'Dev'}`

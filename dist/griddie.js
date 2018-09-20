@@ -629,14 +629,46 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                 }
 
                 if (this._options.masonry) {
-                    var rowHeight = parseInt(window.getComputedStyle(this._element).getPropertyValue('grid-auto-rows'));
-                    var rowGap = parseInt(window.getComputedStyle(this._element).getPropertyValue('grid-row-gap'));
+                    if (window.getComputedStyle(this._element).getPropertyValue('grid-template-columns') === 'none') {
+                        this._element.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
+                    }
+
+                    if (window.getComputedStyle(this._element).getPropertyValue('display') !== 'grid') {
+                        this._element.style.display = 'grid';
+                    }
+
+                    var rowHeight = window.getComputedStyle(this._element).getPropertyValue('grid-auto-rows');
+                    if (rowHeight === 'auto') {
+                        rowHeight = this._element.style.gridAutoRows = '20px';
+                    }
+                    rowHeight = parseInt(rowHeight);
+
+                    if (window.getComputedStyle(this._element).getPropertyValue('grid-column-gap') === 'normal') {
+                        this._element.style.gridColumnGap = '0px';
+                    }
+
+                    var rowGap = window.getComputedStyle(this._element).getPropertyValue('grid-row-gap');
+                    if (rowGap === 'normal') {
+                        rowGap = this._element.style.gridRowGap = '0px';
+                    }
+                    rowGap = parseInt(rowGap);
 
                     this._items.filter(function (item) {
                         return item.style.display !== 'none';
                     }).forEach(function (item) {
                         var rowSpan = Math.ceil(([].concat(_toConsumableArray(item.children))[0].getBoundingClientRect().height + rowGap) / (rowHeight + rowGap));
                         item.style.gridRowEnd = 'span ' + rowSpan;
+                    });
+                } else {
+                    this._element.style.gridTemplateColumns = '';
+                    this._element.style.display = '';
+                    this._element.style.gridAutoRows = '';
+                    this._element.style.gridColumnGap = '';
+                    this._element.style.gridRowGap = '';
+                    this._items.filter(function (item) {
+                        return item.style.display !== 'none';
+                    }).forEach(function (item) {
+                        item.style.gridRowEnd = '';
                     });
                 }
             }
