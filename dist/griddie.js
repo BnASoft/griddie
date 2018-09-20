@@ -432,7 +432,7 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                 var animation = new Promise(function (resolve, reject) {
                     var callback = function callback() {
                         _this2.clear();
-                        _this2.layout(0);
+                        _this2.layout();
                         _this2.store(1);
                         _this2.transform(0);
 
@@ -474,7 +474,9 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                             return callback();
                         });
                     } else {
-                        callback();
+                        requestAnimationFrame(function () {
+                            return callback();
+                        });
                     }
                 });
 
@@ -628,12 +630,14 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                     return;
                 }
 
+                var display = window.getComputedStyle(this._element).getPropertyValue('display');
+
                 if (this._options.masonry) {
                     if (window.getComputedStyle(this._element).getPropertyValue('grid-template-columns') === 'none') {
                         this._element.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
                     }
 
-                    if (window.getComputedStyle(this._element).getPropertyValue('display') !== 'grid') {
+                    if (display !== 'grid') {
                         this._element.style.display = 'grid';
                     }
 
@@ -660,8 +664,8 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                         item.style.gridRowEnd = 'span ' + rowSpan;
                     });
                 } else {
-                    this._element.style.gridTemplateColumns = '';
                     this._element.style.display = '';
+                    this._element.style.gridTemplateColumns = '';
                     this._element.style.gridAutoRows = '';
                     this._element.style.gridColumnGap = '';
                     this._element.style.gridRowGap = '';

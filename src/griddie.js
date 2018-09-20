@@ -43,7 +43,7 @@ export default class Griddie {
         const animation = new Promise((resolve, reject) => {
             const callback = () => {
                 this.clear();
-                this.layout(0);
+                this.layout();
                 this.store(1);
                 this.transform(0);
 
@@ -84,7 +84,7 @@ export default class Griddie {
             if (isPromise(changes)) {
                 changes.then(() => callback());
             } else {
-                callback();
+                requestAnimationFrame(() => callback());
             }
         });
 
@@ -221,12 +221,14 @@ export default class Griddie {
             return;
         }
 
+        const display = window.getComputedStyle(this._element).getPropertyValue('display');
+
         if (this._options.masonry) {
             if (window.getComputedStyle(this._element).getPropertyValue('grid-template-columns') === 'none') {
                 this._element.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
             }
 
-            if (window.getComputedStyle(this._element).getPropertyValue('display') !== 'grid') {
+            if (display !== 'grid') {
                 this._element.style.display = 'grid';
             }
 
@@ -251,8 +253,8 @@ export default class Griddie {
                 item.style.gridRowEnd = 'span ' + rowSpan;
             });
         } else {
-            this._element.style.gridTemplateColumns = '';
             this._element.style.display = '';
+            this._element.style.gridTemplateColumns = '';
             this._element.style.gridAutoRows = '';
             this._element.style.gridColumnGap = '';
             this._element.style.gridRowGap = '';

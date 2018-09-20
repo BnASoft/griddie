@@ -3,18 +3,32 @@
         masonry: grid.classList.contains('masonry')
     });
 
-    [...document.getElementById('nav').querySelectorAll('a')].forEach(link => link.addEventListener('click', () => griddie.filter(link.dataset.filter)));
+    [...document.querySelectorAll('nav li a')].forEach(link =>
+        link.addEventListener('click', e => {
+            e.preventDefault();
 
-    document.getElementById('gutterToggler').addEventListener('click', () =>
-        griddie.animate(() => {
-            document.getElementsByClassName('grid')[0].classList.toggle('collapse');
-        })
-    );
+            if (link.matches('[data-filter]')) {
+                griddie.filter(link.dataset.filter);
 
-    document.getElementById('masonryToggler').addEventListener('click', () =>
-        griddie.animate(() => {
-            griddie.options = { ...griddie.options, ...{ masonry: !griddie.options.masonry } };
-            grid.classList.toggle('masonry');
+                return;
+            }
+
+            if (link.matches('#gutterToggler')) {
+                griddie.animate(() => {
+                    document.getElementsByClassName('grid')[0].classList.toggle('collapse');
+                });
+
+                return;
+            }
+
+            if (link.matches('#masonryToggler')) {
+                griddie.animate(() => {
+                    griddie.options = { ...griddie.options, ...{ masonry: !griddie.options.masonry } };
+                    grid.classList.toggle('standard', !grid.classList.toggle('masonry'));
+                });
+
+                return;
+            }
         })
     );
 });

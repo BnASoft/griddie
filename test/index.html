@@ -10,7 +10,8 @@
 </head>
 
 <body>
-    <nav id="nav">
+    <div class="container">
+        <nav>
     <ul>
         <li><a href="#" data-filter="*">All</a></li>
         <li><a href="#" data-filter=".photo">Photos</a></li>
@@ -19,11 +20,12 @@
         <li><a href="#" data-filter=".project, .photo">Projects and Photos</a></li>
     </ul>
 </nav>
-<hr>
-<a href="#" id="gutterToggler">TOGGLE GUTTER</a>
-<hr>
-<a href="#" id="masonryToggler">TOGGLE MASONRY</a>
-<hr> <div class="grid masonry">
+<nav>
+    <ul>
+        <li><a href="#" id="gutterToggler">TOGGLE GUTTER</a></li>
+        <li><a href="#" id="masonryToggler">TOGGLE MASONRY</a></li>
+    </ul>
+</nav> <div class="grid masonry collapse">
     <div class="item project">
         <div class="content">
             <div class="title">
@@ -375,6 +377,7 @@
         </div>
     </div>
 </div>
+    </div>
     <script src="assets/src/test.js"></script>
 </body>
 
