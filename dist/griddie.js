@@ -431,31 +431,38 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
                 var animation = new Promise(function (resolve, reject) {
                     var callback = function callback() {
-                        _this2.clear();
+                        _this2.clearGridStyles();
+                        _this2.clearItemsStyles();
                         _this2.layout();
-                        _this2.store(1);
-                        _this2.transform(0);
+                        _this2.storeGridData(1);
+                        _this2.storeItemsData(1);
+                        _this2.applyGridStyles(0);
+                        _this2.applyItemsStyles(0);
 
                         requestAnimationFrame(function () {
-                            _this2._element.style.transition = 'height ' + _this2._options.transformTimingCSS + 's ease';
+                            var transformTransition = 'transform ' + _this2._options.transformTimingCSS + 's ease';
+                            var widthHeightTransition = 'width ' + _this2._options.transformTimingCSS + 's ease, height ' + _this2._options.transformTimingCSS + 's ease';
+
+                            _this2._element.style.transition = widthHeightTransition + ', ' + transformTransition;
 
                             [].concat(_toConsumableArray(_this2._items)).filter(function (item) {
                                 return item.style.display !== 'none';
                             }).forEach(function (item) {
-                                var transition = 'transform ' + _this2._options.transformTimingCSS + 's ease';
+                                var transition = transformTransition;
                                 if (!_this2.options.scaleXY) {
-                                    transition += ', width ' + _this2._options.transformTimingCSS + 's ease, height ' + _this2._options.transformTimingCSS + 's ease';
+                                    transition += ', ' + widthHeightTransition;
                                 }
-
                                 item.style.transition = transition;
                             });
 
                             requestAnimationFrame(function () {
-                                return _this2.transform(1);
+                                _this2.applyGridStyles(1);
+                                _this2.applyItemsStyles(1);
                             });
 
                             attachTimeout(_this2._element, function () {
-                                _this2.clear();
+                                _this2.clearGridStyles();
+                                _this2.clearItemsStyles();
                                 resolve();
                             }, _this2.options.transformTiming, 'transform');
                         });
@@ -463,9 +470,12 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
                     detachTimeout(_this2._element, 'transform');
 
-                    _this2.clear();
-                    _this2.store(0);
-                    _this2.transform(0);
+                    _this2.clearGridStyles();
+                    _this2.clearItemsStyles();
+                    _this2.storeGridData(0);
+                    _this2.storeItemsData(0);
+                    _this2.applyGridStyles(0);
+                    _this2.applyItemsStyles(0);
 
                     var changes = layoutChanges();
 
@@ -538,8 +548,10 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
                     var fadeAfterAnimation = new Promise(function (resolve, reject) {
                         var onFadeEnd = function onFadeEnd() {
-                            _this3.store(0);
-                            _this3.transform(0);
+                            //this.storeGridData(0);
+                            _this3.storeItemsData(0);
+                            _this3.applyGridStyles(0);
+                            _this3.applyItemsStyles(0);
                             resolve();
                         };
 
@@ -600,10 +612,11 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
         }, {
             key: 'destroy',
             value: function destroy() {
-                this.clear();
+                this.clearGridStyles();
+                this.clearItemsStyles();
                 this._items.forEach(function (item) {
-                    item.style.gridRowEnd = ''; // TODO: possibly in clear()?
-                    item.style.display = ''; // TODO: possibly in clear()?
+                    item.style.gridRowEnd = ''; // TODO: possibly in clear methods?
+                    item.style.display = ''; // TODO: possibly in clear methods?
                     delete item.rect;
                 });
                 delete this._element.rect;
@@ -630,10 +643,13 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                     return;
                 }
 
-                var display = window.getComputedStyle(this._element).getPropertyValue('display');
+                this._element.style.position = 'relative';
+
+                var computed = window.getComputedStyle(this._element);
+                var display = computed.getPropertyValue('display');
 
                 if (this._options.masonry) {
-                    if (window.getComputedStyle(this._element).getPropertyValue('grid-template-columns') === 'none') {
+                    if (computed.getPropertyValue('grid-template-columns') === 'none') {
                         this._element.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
                     }
 
@@ -641,17 +657,17 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                         this._element.style.display = 'grid';
                     }
 
-                    var rowHeight = window.getComputedStyle(this._element).getPropertyValue('grid-auto-rows');
+                    var rowHeight = computed.getPropertyValue('grid-auto-rows');
                     if (rowHeight === 'auto') {
                         rowHeight = this._element.style.gridAutoRows = '20px';
                     }
                     rowHeight = parseInt(rowHeight);
 
-                    if (window.getComputedStyle(this._element).getPropertyValue('grid-column-gap') === 'normal') {
+                    if (computed.getPropertyValue('grid-column-gap') === 'normal') {
                         this._element.style.gridColumnGap = '0px';
                     }
 
-                    var rowGap = window.getComputedStyle(this._element).getPropertyValue('grid-row-gap');
+                    var rowGap = computed.getPropertyValue('grid-row-gap');
                     if (rowGap === 'normal') {
                         rowGap = this._element.style.gridRowGap = '0px';
                     }
@@ -680,16 +696,28 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
             // TODO: private
 
         }, {
-            key: 'clear',
-            value: function clear() {
+            key: 'clearGridStyles',
+            value: function clearGridStyles() {
                 if (!('instance' in this._element)) {
                     return;
                 }
 
-                this._element.style.position = '';
+                this._element.style.position = 'relative'; // ooooverkill
+                this._element.style.transform = '';
                 this._element.style.width = '';
                 this._element.style.height = '';
                 this._element.style.transition = '';
+                this._element.style.margin = '';
+            }
+
+            // TODO: private
+
+        }, {
+            key: 'clearItemsStyles',
+            value: function clearItemsStyles() {
+                if (!('instance' in this._element)) {
+                    return;
+                }
 
                 this._items.forEach(function (item) {
                     item.style.transform = '';
@@ -705,20 +733,19 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
             // TODO: private
 
         }, {
-            key: 'store',
-            value: function store() {
-                var _this4 = this;
-
+            key: 'storeGridData',
+            value: function storeGridData() {
                 var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
                 if (!('instance' in this._element)) {
                     return;
                 }
 
-                this._viewport.calcScrollTop();
-                this._viewport.calcScrollLeft();
+                this._viewport.calcScrollTop(); // TODO: optimize
+                this._viewport.calcScrollLeft(); // TODO: optimize
 
                 var gridRect = this._element.getBoundingClientRect();
+                var computed = window.getComputedStyle(this._element);
                 if (!('rect' in this._element)) {
                     this._element.rect = [];
                 }
@@ -727,8 +754,27 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                     width: gridRect.width,
                     height: gridRect.height,
                     top: gridRect.top + this._viewport.scrollTop,
-                    left: gridRect.left + this._viewport.scrollLeft
+                    left: gridRect.left + this._viewport.scrollLeft,
+                    marginTop: parseInt(computed.getPropertyValue('margin-top')),
+                    marginLeft: parseInt(computed.getPropertyValue('margin-left'))
                 };
+            }
+
+            // TODO: private
+
+        }, {
+            key: 'storeItemsData',
+            value: function storeItemsData() {
+                var _this4 = this;
+
+                var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
+
+                if (!('instance' in this._element)) {
+                    return;
+                }
+
+                this._viewport.calcScrollTop(); // TODO: optimize
+                this._viewport.calcScrollLeft(); // TODO: optimize
 
                 this._items.filter(function (item) {
                     return item.style.display !== 'none';
@@ -768,8 +814,27 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
             // TODO: private
 
         }, {
-            key: 'transform',
-            value: function transform() {
+            key: 'applyGridStyles',
+            value: function applyGridStyles() {
+                var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
+
+                if (!('instance' in this._element)) {
+                    return;
+                }
+
+                this._element.style.margin = 0;
+                this._element.style.position = 'relative'; // overkill
+                this._element.style.transformOrigin = '0 0 0';
+                this._element.style.transform = 'translate3d(' + this._element.rect[id].marginLeft + 'px,' + this._element.rect[id].marginTop + 'px, 0px)';
+                this._element.style.width = this._element.rect[id].width + 'px';
+                this._element.style.height = this._element.rect[id].height + 'px';
+            }
+
+            // TODO: private
+
+        }, {
+            key: 'applyItemsStyles',
+            value: function applyItemsStyles() {
                 var _this5 = this;
 
                 var id = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
@@ -777,10 +842,6 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
                 if (!('instance' in this._element)) {
                     return;
                 }
-
-                this._element.style.position = 'relative';
-                this._element.style.width = this._element.rect[id].width + 'px';
-                this._element.style.height = this._element.rect[id].height + 'px';
 
                 this._items.filter(function (item) {
                     return item.style.display !== 'none';

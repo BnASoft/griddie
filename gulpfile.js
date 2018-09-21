@@ -1,6 +1,25 @@
-// command list:
-// gulp <task>
-// gulp <task> --development
+// TODO:
+// simplify this build... no args, only tasks and subtasks
+// future command list:
+// - gulp bundle
+// - - gulp test-clean
+// - - gulp library-clean
+// - - gulp library-rollup
+// - - gulp library-min
+// - - (watch of involved files)
+// - gulp test
+// - - gulp library-clean
+// - - gulp test-clean
+// - - gulp test-css
+// - - gulp test-html
+// - - (watch of involved files)
+// - gulp test-es5
+// - - gulp bundle
+// - - gulp test-clean
+// - - gulp test-rollup
+// - - gulp test-css
+// - - gulp test-html
+// - - (watch of involved files)
 
 'use strict';
 

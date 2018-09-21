@@ -42,29 +42,38 @@ export default class Griddie {
 
         const animation = new Promise((resolve, reject) => {
             const callback = () => {
-                this.clear();
+                this.clearGridStyles();
+                this.clearItemsStyles();
                 this.layout();
-                this.store(1);
-                this.transform(0);
+                this.storeGridData(1);
+                this.storeItemsData(1);
+                this.applyGridStyles(0);
+                this.applyItemsStyles(0);
 
                 requestAnimationFrame(() => {
-                    this._element.style.transition = 'height ' + this._options.transformTimingCSS + 's ease';
+                    const transformTransition = 'transform ' + this._options.transformTimingCSS + 's ease';
+                    const widthHeightTransition = 'width ' + this._options.transformTimingCSS + 's ease, height ' + this._options.transformTimingCSS + 's ease';
+
+                    this._element.style.transition = widthHeightTransition + ', ' + transformTransition;
 
                     [...this._items].filter(item => item.style.display !== 'none').forEach(item => {
-                        let transition = 'transform ' + this._options.transformTimingCSS + 's ease';
+                        let transition = transformTransition;
                         if (!this.options.scaleXY) {
-                            transition += ', width ' + this._options.transformTimingCSS + 's ease, height ' + this._options.transformTimingCSS + 's ease';
+                            transition += ', ' + widthHeightTransition;
                         }
-
                         item.style.transition = transition;
                     });
 
-                    requestAnimationFrame(() => this.transform(1));
+                    requestAnimationFrame(() => {
+                        this.applyGridStyles(1);
+                        this.applyItemsStyles(1);
+                    });
 
                     attachTimeout(
                         this._element,
                         () => {
-                            this.clear();
+                            this.clearGridStyles();
+                            this.clearItemsStyles();
                             resolve();
                         },
                         this.options.transformTiming,
@@ -75,9 +84,12 @@ export default class Griddie {
 
             detachTimeout(this._element, 'transform');
 
-            this.clear();
-            this.store(0);
-            this.transform(0);
+            this.clearGridStyles();
+            this.clearItemsStyles();
+            this.storeGridData(0);
+            this.storeItemsData(0);
+            this.applyGridStyles(0);
+            this.applyItemsStyles(0);
 
             const changes = layoutChanges();
 
@@ -135,8 +147,10 @@ export default class Griddie {
 
             const fadeAfterAnimation = new Promise((resolve, reject) => {
                 const onFadeEnd = () => {
-                    this.store(0);
-                    this.transform(0);
+                    //this.storeGridData(0);
+                    this.storeItemsData(0);
+                    this.applyGridStyles(0);
+                    this.applyItemsStyles(0);
                     resolve();
                 };
 
@@ -195,10 +209,11 @@ export default class Griddie {
     }
 
     destroy() {
-        this.clear();
+        this.clearGridStyles();
+        this.clearItemsStyles();
         this._items.forEach(item => {
-            item.style.gridRowEnd = ''; // TODO: possibly in clear()?
-            item.style.display = ''; // TODO: possibly in clear()?
+            item.style.gridRowEnd = ''; // TODO: possibly in clear methods?
+            item.style.display = ''; // TODO: possibly in clear methods?
             delete item.rect;
         });
         delete this._element.rect;
@@ -221,10 +236,13 @@ export default class Griddie {
             return;
         }
 
-        const display = window.getComputedStyle(this._element).getPropertyValue('display');
+        this._element.style.position = 'relative';
+
+        const computed = window.getComputedStyle(this._element);
+        const display = computed.getPropertyValue('display');
 
         if (this._options.masonry) {
-            if (window.getComputedStyle(this._element).getPropertyValue('grid-template-columns') === 'none') {
+            if (computed.getPropertyValue('grid-template-columns') === 'none') {
                 this._element.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
             }
 
@@ -232,17 +250,17 @@ export default class Griddie {
                 this._element.style.display = 'grid';
             }
 
-            let rowHeight = window.getComputedStyle(this._element).getPropertyValue('grid-auto-rows');
+            let rowHeight = computed.getPropertyValue('grid-auto-rows');
             if (rowHeight === 'auto') {
                 rowHeight = this._element.style.gridAutoRows = '20px';
             }
             rowHeight = parseInt(rowHeight);
 
-            if (window.getComputedStyle(this._element).getPropertyValue('grid-column-gap') === 'normal') {
+            if (computed.getPropertyValue('grid-column-gap') === 'normal') {
                 this._element.style.gridColumnGap = '0px';
             }
 
-            let rowGap = window.getComputedStyle(this._element).getPropertyValue('grid-row-gap');
+            let rowGap = computed.getPropertyValue('grid-row-gap');
             if (rowGap === 'normal') {
                 rowGap = this._element.style.gridRowGap = '0px';
             }
@@ -265,15 +283,24 @@ export default class Griddie {
     }
 
     // TODO: private
-    clear() {
+    clearGridStyles() {
         if (!('instance' in this._element)) {
             return;
         }
 
-        this._element.style.position = '';
+        this._element.style.position = 'relative'; // ooooverkill
+        this._element.style.transform = '';
         this._element.style.width = '';
         this._element.style.height = '';
         this._element.style.transition = '';
+        this._element.style.margin = '';
+    }
+
+    // TODO: private
+    clearItemsStyles() {
+        if (!('instance' in this._element)) {
+            return;
+        }
 
         this._items.forEach(item => {
             item.style.transform = '';
@@ -287,15 +314,16 @@ export default class Griddie {
     }
 
     // TODO: private
-    store(id = 0) {
+    storeGridData(id = 0) {
         if (!('instance' in this._element)) {
             return;
         }
 
-        this._viewport.calcScrollTop();
-        this._viewport.calcScrollLeft();
+        this._viewport.calcScrollTop(); // TODO: optimize
+        this._viewport.calcScrollLeft(); // TODO: optimize
 
         const gridRect = this._element.getBoundingClientRect();
+        const computed = window.getComputedStyle(this._element);
         if (!('rect' in this._element)) {
             this._element.rect = [];
         }
@@ -304,8 +332,20 @@ export default class Griddie {
             width: gridRect.width,
             height: gridRect.height,
             top: gridRect.top + this._viewport.scrollTop,
-            left: gridRect.left + this._viewport.scrollLeft
+            left: gridRect.left + this._viewport.scrollLeft,
+            marginTop: parseInt(computed.getPropertyValue('margin-top')),
+            marginLeft: parseInt(computed.getPropertyValue('margin-left'))
         };
+    }
+
+    // TODO: private
+    storeItemsData(id = 0) {
+        if (!('instance' in this._element)) {
+            return;
+        }
+
+        this._viewport.calcScrollTop(); // TODO: optimize
+        this._viewport.calcScrollLeft(); // TODO: optimize
 
         this._items.filter(item => item.style.display !== 'none').forEach(item => {
             if (!('rect' in item)) {
@@ -341,14 +381,24 @@ export default class Griddie {
     }
 
     // TODO: private
-    transform(id = 0) {
+    applyGridStyles(id = 0) {
         if (!('instance' in this._element)) {
             return;
         }
 
-        this._element.style.position = 'relative';
+        this._element.style.margin = 0;
+        this._element.style.position = 'relative'; // overkill
+        this._element.style.transformOrigin = '0 0 0';
+        this._element.style.transform = 'translate3d(' + this._element.rect[id].marginLeft + 'px,' + this._element.rect[id].marginTop + 'px, 0px)';
         this._element.style.width = this._element.rect[id].width + 'px';
         this._element.style.height = this._element.rect[id].height + 'px';
+    }
+
+    // TODO: private
+    applyItemsStyles(id = 0) {
+        if (!('instance' in this._element)) {
+            return;
+        }
 
         this._items.filter(item => item.style.display !== 'none').forEach(item => {
             let transform = 'translate3d(' + item.rect[id].left + 'px,' + item.rect[id].top + 'px, 0px)';
