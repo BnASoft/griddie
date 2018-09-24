@@ -1,26 +1,3 @@
-// TODO:
-// simplify this build... no args, only tasks and subtasks
-// future command list:
-// - gulp bundle
-// - - gulp playground-clean
-// - - gulp library-clean
-// - - gulp library-scripts
-// - - gulp library-min
-// - - (watch of involved files)
-// - gulp test
-// - - gulp library-clean
-// - - gulp playground-clean
-// - - gulp playground-styles
-// - - gulp playground-html
-// - - (watch of involved files)
-// - gulp playground-es5
-// - - gulp bundle
-// - - gulp playground-clean
-// - - gulp playground-scripts
-// - - gulp playground-styles
-// - - gulp playground-html
-// - - (watch of involved files)
-
 'use strict';
 
 const clearRequire = module => {
@@ -61,9 +38,13 @@ gulp.task('library-clean', done => {
 });
 // rollup js includes and transpile
 gulp.task('library-js', callback => {
+    const source = './src/griddie.js';
+
+    processedFiles.js.push(source);
+
     pump(
         [
-            gulp.src('./src/griddie.js'),
+            gulp.src(source),
             sourcemaps.init(configuration.sourcemaps),
             rollup(
                 {},
@@ -81,9 +62,13 @@ gulp.task('library-js', callback => {
 });
 // minify js
 gulp.task('library-js-min', callback => {
+    const source = './src/griddie.js';
+
+    processedFiles.js.push(source);
+
     pump(
         [
-            gulp.src('./src/griddie.js'),
+            gulp.src(source),
             sourcemaps.init(configuration.sourcemaps),
             rollup(
                 {},
@@ -101,16 +86,20 @@ gulp.task('library-js-min', callback => {
 });
 // test:
 // cleanup
-gulp.task('playground-clean', done => {
+gulp.task('page-clean', done => {
     del.sync('./test/assets/dist/');
     del.sync('./test/index.html');
     done();
 });
 // transpile css
-gulp.task('playground-scss', callback => {
+gulp.task('page-scss', callback => {
+    const source = './test/assets/src/test.scss';
+
+    processedFiles.scss.push(source);
+
     pump(
         [
-            gulp.src('./test/assets/src/test.scss'),
+            gulp.src(source),
             sourcemaps.init(configuration.sourcemaps),
             sass(configuration.sass).on('error', err => log(err)),
             postcss([autoprefixer()]).on('error', err => log(err)),
@@ -121,66 +110,95 @@ gulp.task('playground-scss', callback => {
     );
 });
 // rollup js includes and transpile
-gulp.task('playground-js', callback =>
+gulp.task('page-js', callback => {
+    const source = './test/assets/src/test.js';
+
+    processedFiles.js.push(source);
+
     pump(
         [
-            /*gulp.src(),
+            gulp.src(source),
             sourcemaps.init(configuration.sourcemaps),
-            rollup({}, {...configuration.rollup, name : "GriddieTest"}).on('error', err => log(err)),
+            rollup({}, configuration.rollup).on('error', err => log(err)),
             babel().on('error', err => log(err)),
             sourcemaps.write('.'),
-            gulp.dest(resource.paths.dist)*/
+            gulp.dest('./test/assets/dist/')
         ],
         callback
-    )
-);
+    );
+});
 // build handlebar
-gulp.task('playground-html', callback =>
+gulp.task('page-html', callback => {
+    const page = './test/assets/src/index.hbs';
+    const partials = './test/assets/src/index.*.hbs';
+    const json = './test/assets/src/index.json';
+
+    processedFiles.html.push(page);
+    processedFiles.html.push(partials);
+    processedFiles.json.push(json);
+
     pump(
         [
-            /*gulp.src(source),
+            gulp.src(page),
             hb(configuration.hbs)
-                .data(clearRequire('test/assets/src/index.json'))
-                .data()
-                .partials(),
+                .data(clearRequire(json))
+                .data({
+                    modules: true
+                })
+                .partials(partials),
             rename({ extname: '.html' }),
-            gulp.dest(dst)*/
+            gulp.dest('./test/')
         ],
         callback
-    )
-);
+    );
+});
 // build handlebar es5
-gulp.task('playground-html', callback =>
+gulp.task('page-html-es5', callback => {
+    const page = './test/assets/src/index.hbs';
+    const partials = './test/assets/src/index.*.hbs';
+    const json = './test/assets/src/index.json';
+
+    processedFiles.html.push(page);
+    processedFiles.html.push(partials);
+    processedFiles.json.push(json);
+
     pump(
         [
-            /*gulp.src(source),
+            gulp.src(page),
             hb(configuration.hbs)
-                .data(clearRequire('test/assets/src/index.json'))
-                .data()
-                .partials(),
+                .data(clearRequire(json))
+                .data({
+                    modules: false
+                })
+                .partials(partials),
             rename({ extname: '.html' }),
-            gulp.dest(dst)*/
+            gulp.dest('./test/')
         ],
         callback
-    )
-);
+    );
+});
 // - - - - - - -
 
 // - - - - - - -
 // main tasks
 // - - - - - - -
-// clean all
-gulp.task('clean', ['library-clean', 'playground-clean']);
 // bundle library distribution
-gulp.task('bundle', ['playground-clean', 'library-js', 'library-js-min'], () => {
-    //gulp.watch(/* processed files ... */, [/* tasks ... */]);
+gulp.task('bundle', ['library-js', 'library-js-min'], () => {
+    gulp.watch(processedFiles.js, ['library-js', 'library-js-min']);
 });
 // setup test page
-gulp.task('playground', ['playground-clean', 'playground-scss', 'playground-html'], () => {
-    //gulp.watch(/* processed files ... */, [/* tasks ... */]);
+gulp.task('page', ['page-clean', 'page-scss', 'page-html'], () => {
+    gulp.watch(processedFiles.scss, ['page-scss']);
+    gulp.watch([...processedFiles.html, processedFiles.json], ['page-html']);
 });
 // setup test page (old browsers)
-gulp.task('playground-es5', ['playground-clean', 'playground-scss', 'playground-js', 'playground-html-es5'], () => {
-    //gulp.watch(/* processed files ... */, [/* tasks ... */]);
+gulp.task('page-es5', ['page-clean', 'page-scss', 'page-js', 'page-html-es5'], () => {
+    gulp.watch(processedFiles.scss, ['page-scss']);
+    gulp.watch([...processedFiles.html, processedFiles.json], ['page-html']);
+    gulp.watch(processedFiles.js, ['page-js']);
 });
+// clean all
+gulp.task('clean', ['library-clean', 'page-clean']);
+// default task
+gulp.task('default', ['clean', 'library-js', 'library-js-min', 'page-scss', 'page-html']);
 // - - - - - - -
