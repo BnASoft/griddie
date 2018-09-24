@@ -2,23 +2,23 @@
 // simplify this build... no args, only tasks and subtasks
 // future command list:
 // - gulp bundle
-// - - gulp test-clean
+// - - gulp playground-clean
 // - - gulp library-clean
-// - - gulp library-rollup
+// - - gulp library-scripts
 // - - gulp library-min
 // - - (watch of involved files)
 // - gulp test
 // - - gulp library-clean
-// - - gulp test-clean
-// - - gulp test-css
-// - - gulp test-html
+// - - gulp playground-clean
+// - - gulp playground-styles
+// - - gulp playground-html
 // - - (watch of involved files)
-// - gulp test-es5
+// - gulp playground-es5
 // - - gulp bundle
-// - - gulp test-clean
-// - - gulp test-rollup
-// - - gulp test-css
-// - - gulp test-html
+// - - gulp playground-clean
+// - - gulp playground-scripts
+// - - gulp playground-styles
+// - - gulp playground-html
 // - - (watch of involved files)
 
 'use strict';
@@ -43,67 +43,85 @@ const log = require('fancy-log');
 const hb = require('gulp-hb');
 const configuration = require('./gulpfile.json')[0];
 
+let processedFiles = {
+    js: [],
+    scss: [],
+    html: [],
+    json: []
+};
+
 // - - - - - - -
 // micro tasks
 // - - - - - - -
 // library:
 // cleanup
 gulp.task('library-clean', done => {
-    del.sync('dist');
+    del.sync('./dist/');
     done();
 });
 // rollup js includes and transpile
-gulp.task('library-rollup', callback =>
+gulp.task('library-js', callback => {
     pump(
         [
-            /*gulp.src(),
+            gulp.src('./src/griddie.js'),
             sourcemaps.init(configuration.sourcemaps),
-            rollup({}, {...configuration.rollup, name : "Griddie"}).on('error', err => log(err)),
+            rollup(
+                {},
+                {
+                    ...configuration.rollup,
+                    name: 'Griddie'
+                }
+            ).on('error', err => log(err)),
             babel().on('error', err => log(err)),
             sourcemaps.write('.'),
-            gulp.dest(resource.paths.dist)*/
+            gulp.dest('./dist/')
         ],
         callback
-    )
-);
+    );
+});
 // minify js
-gulp.task('library-min', callback =>
+gulp.task('library-js-min', callback => {
     pump(
         [
-            /*gulp.src(resource.paths.src + filename),
+            gulp.src('./src/griddie.js'),
             sourcemaps.init(configuration.sourcemaps),
-            rollup({}, {...configuration.rollup, name : "Griddie"}).on('error', err => log(err)),
-            babel().on('error', err => log(err)),
+            rollup(
+                {},
+                {
+                    ...configuration.rollup,
+                    name: 'Griddie'
+                }
+            ).on('error', err => log(err)),
             minify({ ext: { min: '.min.js' } }),
             sourcemaps.write('.'),
-            gulp.dest(resource.paths.dist)*/
+            gulp.dest('./dist/')
         ],
         callback
-    )
-);
+    );
+});
 // test:
 // cleanup
-gulp.task('test-clean', done => {
-    del.sync('test/assets/dist');
-    del.sync('test/index.html');
+gulp.task('playground-clean', done => {
+    del.sync('./test/assets/dist/');
+    del.sync('./test/index.html');
     done();
 });
 // transpile css
-gulp.task('test-css', callback => {
+gulp.task('playground-scss', callback => {
     pump(
         [
-            /*gulp.src(),
+            gulp.src('./test/assets/src/test.scss'),
             sourcemaps.init(configuration.sourcemaps),
-            sass({...configuration.sass, { onError: err => log(err) }}),
+            sass(configuration.sass).on('error', err => log(err)),
             postcss([autoprefixer()]).on('error', err => log(err)),
             sourcemaps.write('.'),
-            gulp.dest(resource.paths.dist)*/
+            gulp.dest('./test/assets/dist/')
         ],
         callback
     );
 });
 // rollup js includes and transpile
-gulp.task('test-rollup', callback =>
+gulp.task('playground-js', callback =>
     pump(
         [
             /*gulp.src(),
@@ -117,7 +135,7 @@ gulp.task('test-rollup', callback =>
     )
 );
 // build handlebar
-gulp.task('test-html', callback =>
+gulp.task('playground-html', callback =>
     pump(
         [
             /*gulp.src(source),
@@ -132,7 +150,7 @@ gulp.task('test-html', callback =>
     )
 );
 // build handlebar es5
-gulp.task('test-html', callback =>
+gulp.task('playground-html', callback =>
     pump(
         [
             /*gulp.src(source),
@@ -152,17 +170,17 @@ gulp.task('test-html', callback =>
 // main tasks
 // - - - - - - -
 // clean all
-gulp.task('clean', ['library-clean', 'test-clean']);
+gulp.task('clean', ['library-clean', 'playground-clean']);
 // bundle library distribution
-gulp.task('bundle', ['test-clean', 'library-clean', 'library-rollup', 'library-min'], () => {
+gulp.task('bundle', ['playground-clean', 'library-js', 'library-js-min'], () => {
     //gulp.watch(/* processed files ... */, [/* tasks ... */]);
 });
 // setup test page
-gulp.task('test', ['library-clean', 'test-clean', 'test-css', 'test-html'], () => {
+gulp.task('playground', ['playground-clean', 'playground-scss', 'playground-html'], () => {
     //gulp.watch(/* processed files ... */, [/* tasks ... */]);
 });
 // setup test page (old browsers)
-gulp.task('test-es5', ['library-clean', 'test-clean', 'test-css', 'test-rollup', 'test-html-es5'], () => {
+gulp.task('playground-es5', ['playground-clean', 'playground-scss', 'playground-js', 'playground-html-es5'], () => {
     //gulp.watch(/* processed files ... */, [/* tasks ... */]);
 });
 // - - - - - - -
