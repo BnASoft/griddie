@@ -1,37 +1,17 @@
 [
     {
-        "sourcemaps": { "loadMaps": true, "largeFile": true },
-        "resources": [
-            {
-                "paths": {
-                    "src": "./src/",
-                    "dist": "./dist/"
-                },
-                "files": {
-                    "js": {
-                        "module": "Griddie",
-                        "list": ["griddie.js"]
-                    }
-                }
-            },
-            {
-                "paths": {
-                    "src": "./test/assets/src/",
-                    "dist": "./test/assets/dist/"
-                },
-                "files": {
-                    "js": {
-                        "list": ["test.js"]
-                    },
-                    "css": {
-                        "list": ["test.scss"]
-                    },
-                    "hbs": {
-                        "list": ["index.hbs"],
-                        "dist": "./test/"
-                    }
-                }
-            }
-        ]
+        "sourcemaps": {
+            "loadMaps": true,
+            "largeFile": true
+        },
+        "sass": {
+            "outputStyle": "expanded"
+        },
+        "rollup": {
+            "format": "umd"
+        },
+        "hbs": {
+            "bustCache": false
+        }
     }
 ]
