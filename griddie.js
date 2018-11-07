@@ -1,20 +1,27 @@
-import { isPromise } from './griddie.utils.js';
-import { attachTimeout, detachTimeout } from './toolbox/src/toolbox.timers.js';
-import { Viewport } from './toolbox/src/toolbox.viewport.js';
-import { attachEventListener, detachEventListener } from './toolbox/src/toolbox.events.js';
+const html = document.documentElement;
+const body = document.body;
+const scroller = html || body;
 
-export default class Griddie {
+let scrollTop = 0;
+let scrollLeft = 0;
+
+const isPromise = object => !!object && (typeof object === 'object' || typeof object === 'function') && typeof object.then === 'function';
+
+class Griddie {
     constructor(element, options) {
         this._element = element;
         this._items = [...this._element.children];
         this._options = {};
-        this._viewport = new Viewport();
 
         this._element.instance = this;
 
         this.options = options;
         this.layout();
-        attachEventListener(window, 'resize.griddie', () => this.layout());
+        window.addEventListener('resize', () => this.layout());
+
+        // tmp...
+        this._timer1 = null;
+        this._timer2 = null;
     }
 
     set options(options) {
@@ -69,20 +76,19 @@ export default class Griddie {
                         this.applyItemsStyles(1);
                     });
 
-                    attachTimeout(
-                        this._element,
+                    this._timer1 = setTimeout(
+                        // TODO: transitionend
                         () => {
                             this.clearGridStyles();
                             this.clearItemsStyles();
                             resolve();
                         },
-                        this.options.transformTiming,
-                        'transform'
+                        this.options.transformTiming
                     );
                 });
             };
 
-            detachTimeout(this._element, 'transform');
+            clearTimeout(this._timer1); // TODO: transitionend
 
             this.clearGridStyles();
             this.clearItemsStyles();
@@ -143,7 +149,7 @@ export default class Griddie {
         };
 
         const animation = this.animate(() => {
-            detachTimeout(this._element, 'opacity');
+            clearTimeout(this._timer2);
 
             const fadeAfterAnimation = new Promise((resolve, reject) => {
                 const onFadeEnd = () => {
@@ -175,16 +181,12 @@ export default class Griddie {
                         requestAnimationFrame(() => {
                             fade();
 
-                            attachTimeout(
-                                this._element,
-                                () => {
-                                    clearFade();
+                            this._timer2 = setTimeout(() => {
+                                // TODO: transitionend
+                                clearFade();
 
-                                    requestAnimationFrame(() => onFadeEnd());
-                                },
-                                this.options.opacityTiming,
-                                'opacity'
-                            );
+                                requestAnimationFrame(() => onFadeEnd());
+                            }, this.options.opacityTiming);
                         });
                     }
                 });
@@ -217,9 +219,9 @@ export default class Griddie {
             delete item.rect;
         });
         delete this._element.rect;
-        detachTimeout(this._element, 'transform');
-        detachTimeout(this._element, 'opacity');
-        detachEventListener(window, 'resize.griddie');
+        clearTimeout(this._timer2); // TODO: transitionend
+        clearTimeout(this._timer1); // TODO: transitionend
+        window.removeEventListener('resize');
         delete this._element.instance;
     }
 
@@ -319,8 +321,8 @@ export default class Griddie {
             return;
         }
 
-        this._viewport.calcScrollTop(); // TODO: optimize
-        this._viewport.calcScrollLeft(); // TODO: optimize
+        scrollTop = scroller.scrollTop; // TODO: optimize
+        scrollLeft = scroller.scrollLeft; // TODO: optimize
 
         const gridRect = this._element.getBoundingClientRect();
         const computed = window.getComputedStyle(this._element);
@@ -331,8 +333,8 @@ export default class Griddie {
         this._element.rect[id] = {
             width: gridRect.width,
             height: gridRect.height,
-            top: gridRect.top + this._viewport.scrollTop,
-            left: gridRect.left + this._viewport.scrollLeft,
+            top: gridRect.top + scrollTop,
+            left: gridRect.left + scrollLeft,
             marginTop: parseInt(computed.getPropertyValue('margin-top')),
             marginLeft: parseInt(computed.getPropertyValue('margin-left'))
         };
@@ -344,8 +346,8 @@ export default class Griddie {
             return;
         }
 
-        this._viewport.calcScrollTop(); // TODO: optimize
-        this._viewport.calcScrollLeft(); // TODO: optimize
+        scrollTop = scroller.scrollTop; // TODO: optimize
+        scrollLeft = scroller.scrollLeft; // TODO: optimize
 
         this._items.filter(item => item.style.display !== 'none').forEach(item => {
             if (!('rect' in item)) {
@@ -356,8 +358,8 @@ export default class Griddie {
             item.rect[id] = {
                 width: itemRect.width,
                 height: itemRect.height,
-                top: itemRect.top + this._viewport.scrollTop - this._element.rect[id].top,
-                left: itemRect.left + this._viewport.scrollLeft - this._element.rect[id].left,
+                top: itemRect.top + scrollTop - this._element.rect[id].top,
+                left: itemRect.left + scrollLeft - this._element.rect[id].left,
                 scaleX: 1,
                 scaleY: 1
             };
