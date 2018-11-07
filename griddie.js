@@ -8,8 +8,8 @@ let scrollLeft = 0;
 const isPromise = object => !!object && (typeof object === 'object' || typeof object === 'function') && typeof object.then === 'function';
 
 class Griddie {
-    constructor(element, options) {
-        this._element = element;
+    constructor(element = '', options = {}) {
+        this._element = typeof element === 'string' ? document.querySelector(element) : element;
         this._items = [...this._element.children];
         this._options = {};
 
@@ -24,7 +24,7 @@ class Griddie {
         this._timer2 = null;
     }
 
-    set options(options) {
+    set options(options = {}) {
         this._options = {
             ...{
                 scaleXY: false, // TODO: single item exceptions ...
@@ -63,13 +63,15 @@ class Griddie {
 
                     this._element.style.transition = widthHeightTransition + ', ' + transformTransition;
 
-                    [...this._items].filter(item => item.style.display !== 'none').forEach(item => {
-                        let transition = transformTransition;
-                        if (!this.options.scaleXY) {
-                            transition += ', ' + widthHeightTransition;
-                        }
-                        item.style.transition = transition;
-                    });
+                    [...this._items]
+                        .filter(item => item.style.display !== 'none')
+                        .forEach(item => {
+                            let transition = transformTransition;
+                            if (!this.options.scaleXY) {
+                                transition += ', ' + widthHeightTransition;
+                            }
+                            item.style.transition = transition;
+                        });
 
                     requestAnimationFrame(() => {
                         this.applyGridStyles(1);
@@ -97,7 +99,7 @@ class Griddie {
             this.applyGridStyles(0);
             this.applyItemsStyles(0);
 
-            const changes = layoutChanges();
+            const changes = layoutChanges(this._element);
 
             if (isPromise(changes)) {
                 changes.then(() => callback());
@@ -268,19 +270,23 @@ class Griddie {
             }
             rowGap = parseInt(rowGap);
 
-            this._items.filter(item => item.style.display !== 'none').forEach(item => {
-                const rowSpan = Math.ceil(([...item.children][0].getBoundingClientRect().height + rowGap) / (rowHeight + rowGap));
-                item.style.gridRowEnd = 'span ' + rowSpan;
-            });
+            this._items
+                .filter(item => item.style.display !== 'none')
+                .forEach(item => {
+                    const rowSpan = Math.ceil(([...item.children][0].getBoundingClientRect().height + rowGap) / (rowHeight + rowGap));
+                    item.style.gridRowEnd = 'span ' + rowSpan;
+                });
         } else {
             this._element.style.display = '';
             this._element.style.gridTemplateColumns = '';
             this._element.style.gridAutoRows = '';
             this._element.style.gridColumnGap = '';
             this._element.style.gridRowGap = '';
-            this._items.filter(item => item.style.display !== 'none').forEach(item => {
-                item.style.gridRowEnd = '';
-            });
+            this._items
+                .filter(item => item.style.display !== 'none')
+                .forEach(item => {
+                    item.style.gridRowEnd = '';
+                });
         }
     }
 
@@ -349,37 +355,39 @@ class Griddie {
         scrollTop = scroller.scrollTop; // TODO: optimize
         scrollLeft = scroller.scrollLeft; // TODO: optimize
 
-        this._items.filter(item => item.style.display !== 'none').forEach(item => {
-            if (!('rect' in item)) {
-                item.rect = [];
-            }
-
-            const itemRect = item.getBoundingClientRect();
-            item.rect[id] = {
-                width: itemRect.width,
-                height: itemRect.height,
-                top: itemRect.top + scrollTop - this._element.rect[id].top,
-                left: itemRect.left + scrollLeft - this._element.rect[id].left,
-                scaleX: 1,
-                scaleY: 1
-            };
-
-            item.rect[id].top = item.rect[id].top >= 0 ? item.rect[id].top : 0;
-            item.rect[id].left = item.rect[id].left >= 0 ? item.rect[id].left : 0;
-
-            if (id === 1) {
-                const scaleX = item.rect[0].width / itemRect.width;
-                const scaleY = item.rect[0].height / itemRect.height;
-
-                if (scaleX > 0) {
-                    item.rect[id].scaleX = 1 / scaleX;
+        this._items
+            .filter(item => item.style.display !== 'none')
+            .forEach(item => {
+                if (!('rect' in item)) {
+                    item.rect = [];
                 }
 
-                if (scaleY > 0) {
-                    item.rect[id].scaleY = 1 / scaleY;
+                const itemRect = item.getBoundingClientRect();
+                item.rect[id] = {
+                    width: itemRect.width,
+                    height: itemRect.height,
+                    top: itemRect.top + scrollTop - this._element.rect[id].top,
+                    left: itemRect.left + scrollLeft - this._element.rect[id].left,
+                    scaleX: 1,
+                    scaleY: 1
+                };
+
+                item.rect[id].top = item.rect[id].top >= 0 ? item.rect[id].top : 0;
+                item.rect[id].left = item.rect[id].left >= 0 ? item.rect[id].left : 0;
+
+                if (id === 1) {
+                    const scaleX = item.rect[0].width / itemRect.width;
+                    const scaleY = item.rect[0].height / itemRect.height;
+
+                    if (scaleX > 0) {
+                        item.rect[id].scaleX = 1 / scaleX;
+                    }
+
+                    if (scaleY > 0) {
+                        item.rect[id].scaleY = 1 / scaleY;
+                    }
                 }
-            }
-        });
+            });
     }
 
     // TODO: private
@@ -402,22 +410,24 @@ class Griddie {
             return;
         }
 
-        this._items.filter(item => item.style.display !== 'none').forEach(item => {
-            let transform = 'translate3d(' + item.rect[id].left + 'px,' + item.rect[id].top + 'px, 0px)';
+        this._items
+            .filter(item => item.style.display !== 'none')
+            .forEach(item => {
+                let transform = 'translate3d(' + item.rect[id].left + 'px,' + item.rect[id].top + 'px, 0px)';
 
-            if (this.options.scaleXY) {
-                transform += ' scale3d(' + item.rect[id].scaleX + ', ' + item.rect[id].scaleY + ', 1)';
-            }
+                if (this.options.scaleXY) {
+                    transform += ' scale3d(' + item.rect[id].scaleX + ', ' + item.rect[id].scaleY + ', 1)';
+                }
 
-            if (!this.options.scaleXY || id === 0) {
-                item.style.width = item.rect[id].width + 'px';
-                item.style.height = item.rect[id].height + 'px';
-            }
+                if (!this.options.scaleXY || id === 0) {
+                    item.style.width = item.rect[id].width + 'px';
+                    item.style.height = item.rect[id].height + 'px';
+                }
 
-            item.style.margin = 0;
-            item.style.position = 'absolute';
-            item.style.transformOrigin = '0 0 0';
-            item.style.transform = transform;
-        });
+                item.style.margin = 0;
+                item.style.position = 'absolute';
+                item.style.transformOrigin = '0 0 0';
+                item.style.transform = transform;
+            });
     }
 }
