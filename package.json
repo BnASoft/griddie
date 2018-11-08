@@ -1,0 +1,21 @@
+{
+    "name": "Griddie",
+    "version": "0.0.1",
+    "devDependencies": {
+        "@babel/core": "^7.1.5",
+        "@babel/plugin-proposal-class-properties": "^7.1.0",
+        "@babel/plugin-proposal-object-rest-spread": "^7.0.0",
+        "@babel/plugin-transform-arrow-functions": "^7.0.0",
+        "@babel/plugin-transform-block-scoping": "^7.1.5",
+        "@babel/plugin-transform-classes": "^7.1.0",
+        "@babel/plugin-transform-parameters": "^7.1.0",
+        "@babel/plugin-transform-spread": "^7.0.0",
+        "@babel/plugin-transform-template-literals": "^7.0.0",
+        "gulp": "^4.0.0",
+        "gulp-babel": "^8.0.0",
+        "gulp-cli": "^2.0.1",
+        "gulp-rename": "^1.4.0",
+        "gulp-sass": "^4.0.2",
+        "gulp-uglify": "^3.0.1"
+    }
+}
