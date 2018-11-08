@@ -19,17 +19,18 @@ class Griddie {
         this.layout();
         window.addEventListener('resize', () => this.layout());
 
-        // tmp...
+        // FIXME: use transitionend
         this._timer1 = null;
+        // FIXME: use transitionend
         this._timer2 = null;
     }
 
     set options(options = {}) {
         this._options = {
             ...{
-                scaleXY: false, // TODO: single item exceptions ...
-                opacityTiming: 300,
-                transformTiming: 300,
+                scaleXY: false, // TODO: give ability to set this for every single item
+                opacityTiming: 300, // FIXME: use transitionend
+                transformTiming: 300, // FIXME: use transitionend
                 masonry: false
             },
             ...options
@@ -67,6 +68,7 @@ class Griddie {
                         .filter(item => item.style.display !== 'none')
                         .forEach(item => {
                             let transition = transformTransition;
+
                             if (!this.options.scaleXY) {
                                 transition += ', ' + widthHeightTransition;
                             }
@@ -78,19 +80,17 @@ class Griddie {
                         this.applyItemsStyles(1);
                     });
 
-                    this._timer1 = setTimeout(
-                        // TODO: transitionend
-                        () => {
-                            this.clearGridStyles();
-                            this.clearItemsStyles();
-                            resolve();
-                        },
-                        this.options.transformTiming
-                    );
+                    // FIXME: use transitionend
+                    this._timer1 = setTimeout(() => {
+                        this.clearGridStyles();
+                        this.clearItemsStyles();
+                        resolve();
+                    }, this.options.transformTiming);
                 });
             };
 
-            clearTimeout(this._timer1); // TODO: transitionend
+            // FIXME: use transitionend
+            clearTimeout(this._timer1);
 
             this.clearGridStyles();
             this.clearItemsStyles();
@@ -183,8 +183,8 @@ class Griddie {
                         requestAnimationFrame(() => {
                             fade();
 
+                            // FIXME: use transitionend
                             this._timer2 = setTimeout(() => {
-                                // TODO: transitionend
                                 clearFade();
 
                                 requestAnimationFrame(() => onFadeEnd());
@@ -220,9 +220,14 @@ class Griddie {
             item.style.display = ''; // TODO: possibly in clear methods?
             delete item.rect;
         });
+
         delete this._element.rect;
-        clearTimeout(this._timer2); // TODO: transitionend
-        clearTimeout(this._timer1); // TODO: transitionend
+
+        // FIXME: use transitionend
+        clearTimeout(this._timer1);
+        // FIXME: use transitionend
+        clearTimeout(this._timer2);
+
         window.removeEventListener('resize');
         delete this._element.instance;
     }
